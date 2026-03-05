@@ -207,6 +207,8 @@ Les fichiers du frontend (`app/public/`) sont montes en volume dans le conteneur
 
 Aucune action necessaire, le navigateur se met a jour automatiquement via Server-Sent Events.
 
+> **Voir [QUERIES.md](QUERIES.md)** pour une explication detaillee de chaque requete, avec les concepts MongoDB expliques pour les debutants.
+
 ---
 
 ## Diagramme ER

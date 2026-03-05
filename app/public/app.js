@@ -95,12 +95,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const runCustomBtn = document.getElementById("run-custom");
   const collectionHint = document.getElementById("collection-hint");
 
-  // Populate collection dropdown
-  const collections = [
-    "categories", "products", "skus", "suppliers",
-    "warehouses", "inventory", "users", "carts",
-    "orders", "reviews", "promotions",
-  ];
+  // Populate collection dropdown dynamically
+  const colRes = await fetch("/api/collections");
+  const collections = await colRes.json();
   for (const col of collections) {
     const opt = document.createElement("option");
     opt.value = col;

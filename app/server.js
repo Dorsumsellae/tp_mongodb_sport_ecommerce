@@ -9,6 +9,7 @@ const MONGO_URL = process.env.MONGO_URL || "mongodb://localhost:27017";
 const DB_NAME = "ecommerce_sport";
 
 let db;
+let knownCollections = [];
 
 // -- Definitions des requetes --------------------------------------------------
 
@@ -426,6 +427,315 @@ const queries = [
         ])
         .toArray(),
   },
+  // -- Ecriture : Panier
+  {
+    id: "create-cart",
+    domain: "Ecriture",
+    title: "Creer un panier",
+    description: "Inserer un nouveau panier avec deux articles pour Alice",
+    mongoQuery: `db.carts.insertOne({
+  user_id: ObjectId("<user_id>"),
+  items: [
+    {
+      sku_id: ObjectId("<sku_id>"),
+      product_name: "Nike Air Zoom Pegasus 41",
+      size: "42", color: "Blanc",
+      price: 129.99, quantity: 1
+    },
+    {
+      sku_id: ObjectId("<sku_id>"),
+      product_name: "Nike Dri-FIT Running Tee",
+      size: "M", color: "Bleu",
+      price: 34.99, quantity: 2
+    }
+  ],
+  expires_at: new Date(Date.now() + 7*24*60*60*1000),
+  updated_at: new Date()
+})`,
+    run: async () => {
+      const user = await db.collection("users").findOne({ email: "alice.renard@example.com" });
+      const skuShoe = await db.collection("skus").findOne({ sku_code: "NK-PEG41-WHT-42" });
+      const skuTee = await db.collection("skus").findOne({ sku_code: "NK-DFT-BLU-M" });
+      // Remove existing cart for this user first (unique index)
+      await db.collection("carts").deleteMany({ user_id: user._id });
+      const result = await db.collection("carts").insertOne({
+        user_id: user._id,
+        items: [
+          { sku_id: skuShoe._id, product_name: "Nike Air Zoom Pegasus 41", size: "42", color: "Blanc", price: 129.99, quantity: 1 },
+          { sku_id: skuTee._id, product_name: "Nike Dri-FIT Running Tee", size: "M", color: "Bleu", price: 34.99, quantity: 2 },
+        ],
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        updated_at: new Date(),
+      });
+      return [{ acknowledged: result.acknowledged, insertedId: result.insertedId }];
+    },
+  },
+  {
+    id: "add-item-to-cart",
+    domain: "Ecriture",
+    title: "Ajouter un article au panier",
+    description: "Ajouter un nouvel article au panier existant avec $push",
+    mongoQuery: `db.carts.updateOne(
+  { user_id: ObjectId("<user_id>") },
+  {
+    $push: {
+      items: {
+        sku_id: ObjectId("<sku_id>"),
+        product_name: "Adidas Ultraboost Light",
+        size: "42", color: "Gris",
+        price: 179.99, quantity: 1
+      }
+    },
+    $set: { updated_at: new Date() }
+  }
+)`,
+    run: async () => {
+      const user = await db.collection("users").findOne({ email: "alice.renard@example.com" });
+      const sku = await db.collection("skus").findOne({ sku_code: "AD-UBL-GRY-42" });
+      const result = await db.collection("carts").updateOne(
+        { user_id: user._id },
+        {
+          $push: {
+            items: { sku_id: sku._id, product_name: "Adidas Ultraboost Light", size: "42", color: "Gris", price: 179.99, quantity: 1 },
+          },
+          $set: { updated_at: new Date() },
+        }
+      );
+      return [{ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount }];
+    },
+  },
+  {
+    id: "update-cart-quantity",
+    domain: "Ecriture",
+    title: "Modifier la quantite d'un article",
+    description: "Incrementer la quantite d'un article du panier avec $ positional et $inc",
+    mongoQuery: `db.carts.updateOne(
+  { user_id: ObjectId("<user_id>"), "items.product_name": "Nike Dri-FIT Running Tee" },
+  { $inc: { "items.$.quantity": 1 }, $set: { updated_at: new Date() } }
+)`,
+    run: async () => {
+      const user = await db.collection("users").findOne({ email: "alice.renard@example.com" });
+      const result = await db.collection("carts").updateOne(
+        { user_id: user._id, "items.product_name": "Nike Dri-FIT Running Tee" },
+        { $inc: { "items.$.quantity": 1 }, $set: { updated_at: new Date() } }
+      );
+      return [{ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount }];
+    },
+  },
+  {
+    id: "remove-item-from-cart",
+    domain: "Ecriture",
+    title: "Supprimer un article du panier",
+    description: "Retirer un article du panier avec $pull",
+    mongoQuery: `db.carts.updateOne(
+  { user_id: ObjectId("<user_id>") },
+  {
+    $pull: { items: { product_name: "Adidas Ultraboost Light" } },
+    $set: { updated_at: new Date() }
+  }
+)`,
+    run: async () => {
+      const user = await db.collection("users").findOne({ email: "alice.renard@example.com" });
+      const result = await db.collection("carts").updateOne(
+        { user_id: user._id },
+        {
+          $pull: { items: { product_name: "Adidas Ultraboost Light" } },
+          $set: { updated_at: new Date() },
+        }
+      );
+      return [{ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount }];
+    },
+  },
+
+  // -- Ecriture : Commande
+  {
+    id: "create-order",
+    domain: "Ecriture",
+    title: "Creer une commande",
+    description: "Transformer le panier d'Alice en commande avec snapshot des donnees",
+    mongoQuery: `db.orders.insertOne({
+  order_number: "ORD-2026-000002",
+  user_id: ObjectId("<user_id>"),
+  items: [ /* copie depuis le panier */ ],
+  shipping_address: { /* snapshot adresse */ },
+  billing_address: { /* snapshot adresse */ },
+  payment: {
+    method: "card", card_last4: "1234",
+    transaction_id: "txn_demo_002",
+    paid_at: new Date()
+  },
+  applied_promotions: [],
+  subtotal: 199.97,
+  shipping_cost: 4.99,
+  discount_total: 0,
+  total: 204.96,
+  status: "confirmed",
+  created_at: new Date()
+})`,
+    run: async () => {
+      const user = await db.collection("users").findOne({ email: "alice.renard@example.com" });
+      const cart = await db.collection("carts").findOne({ user_id: user._id });
+      const items = cart ? cart.items : [];
+      const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+      // Clean up previous demo order if exists
+      await db.collection("orders").deleteOne({ order_number: "ORD-2026-000002" });
+      const result = await db.collection("orders").insertOne({
+        order_number: "ORD-2026-000002",
+        user_id: user._id,
+        items,
+        shipping_address: user.addresses[0],
+        billing_address: user.addresses[0],
+        payment: { method: "card", card_last4: "1234", transaction_id: "txn_demo_002", paid_at: new Date() },
+        applied_promotions: [],
+        subtotal: Math.round(subtotal * 100) / 100,
+        shipping_cost: 4.99,
+        discount_total: 0,
+        total: Math.round((subtotal + 4.99) * 100) / 100,
+        status: "confirmed",
+        created_at: new Date(),
+      });
+      return [{ acknowledged: result.acknowledged, insertedId: result.insertedId }];
+    },
+  },
+  {
+    id: "update-order-status",
+    domain: "Ecriture",
+    title: "Mettre a jour le statut d'une commande",
+    description: "Passer une commande de 'confirmed' a 'shipped'",
+    mongoQuery: `db.orders.findOneAndUpdate(
+  { order_number: "ORD-2026-000002" },
+  { $set: { status: "shipped" } },
+  { returnDocument: "after" }
+)`,
+    run: async () => {
+      const result = await db.collection("orders").findOneAndUpdate(
+        { order_number: "ORD-2026-000002" },
+        { $set: { status: "shipped" } },
+        { returnDocument: "after" }
+      );
+      return result ? [result] : [{ message: "Commande ORD-2026-000002 introuvable. Lancez d'abord 'Creer une commande'." }];
+    },
+  },
+
+  // -- Ecriture : Utilisateur & Avis
+  {
+    id: "add-user-address",
+    domain: "Ecriture",
+    title: "Ajouter une adresse utilisateur",
+    description: "Ajouter une nouvelle adresse au tableau addresses[] avec $push",
+    mongoQuery: `db.users.updateOne(
+  { email: "bob.moreau@example.com" },
+  {
+    $push: {
+      addresses: {
+        label: "Bureau",
+        street: "25 Rue de la Bourse",
+        city: "Lyon", zip: "69002", country: "FR",
+        is_default: false
+      }
+    }
+  }
+)`,
+    run: async () => {
+      const result = await db.collection("users").updateOne(
+        { email: "bob.moreau@example.com" },
+        {
+          $push: {
+            addresses: {
+              label: "Bureau",
+              street: "25 Rue de la Bourse",
+              city: "Lyon", zip: "69002", country: "FR",
+              is_default: false,
+            },
+          },
+        }
+      );
+      return [{ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount }];
+    },
+  },
+  {
+    id: "create-review",
+    domain: "Ecriture",
+    title: "Deposer un avis produit",
+    description: "Inserer un avis et mettre a jour la note moyenne du produit ($inc + recalcul)",
+    mongoQuery: `db.reviews.insertOne({
+  product_id: ObjectId("<product_id>"),
+  user_id: ObjectId("<user_id>"),
+  rating: 5,
+  title: "Indispensable pour l'ete",
+  comment: "Tres respirant, parfait pour les sorties par temps chaud.",
+  image_urls: [],
+  sport_context: {
+    sport: "running", frequency: "daily",
+    conditions: "outdoor", weather: "hot"
+  },
+  verified_purchase: true,
+  created_at: new Date()
+})`,
+    run: async () => {
+      const product = await db.collection("products").findOne({ slug: "nike-dri-fit-running-tee" });
+      const user = await db.collection("users").findOne({ email: "bob.moreau@example.com" });
+      const review = {
+        product_id: product._id,
+        user_id: user._id,
+        rating: 5,
+        title: "Indispensable pour l'ete",
+        comment: "Tres respirant, parfait pour les sorties par temps chaud.",
+        image_urls: [],
+        sport_context: { sport: "running", frequency: "daily", conditions: "outdoor", weather: "hot" },
+        verified_purchase: true,
+        created_at: new Date(),
+      };
+      const insertResult = await db.collection("reviews").insertOne(review);
+      // Update denormalized rating on product
+      const allReviews = await db.collection("reviews").find({ product_id: product._id }).toArray();
+      const avg = allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length;
+      await db.collection("products").updateOne(
+        { _id: product._id },
+        { $set: { avg_rating: Math.round(avg * 10) / 10, review_count: allReviews.length } }
+      );
+      return [{
+        acknowledged: insertResult.acknowledged,
+        insertedId: insertResult.insertedId,
+        updated_product: { avg_rating: Math.round(avg * 10) / 10, review_count: allReviews.length },
+      }];
+    },
+  },
+
+  // -- Ecriture : Stock
+  {
+    id: "restock-inventory",
+    domain: "Ecriture",
+    title: "Reapprovisionner un SKU",
+    description: "Ajouter du stock avec $inc et mettre a jour la date de reapprovisionnement",
+    mongoQuery: `db.inventory.updateOne(
+  { sku_id: ObjectId("<sku_id>"), warehouse_id: ObjectId("<warehouse_id>") },
+  {
+    $inc: { quantity: 50 },
+    $set: { last_restock_date: new Date() }
+  }
+)`,
+    run: async () => {
+      const sku = await db.collection("skus").findOne({ sku_code: "NK-PEG41-WHT-42" });
+      const wh = await db.collection("warehouses").findOne({ code: "WH-PAR-01" });
+      const result = await db.collection("inventory").updateOne(
+        { sku_id: sku._id, warehouse_id: wh._id },
+        { $inc: { quantity: 50 }, $set: { last_restock_date: new Date() } }
+      );
+      return [{ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount }];
+    },
+  },
+  {
+    id: "delete-demo-order",
+    domain: "Ecriture",
+    title: "Supprimer la commande de demo",
+    description: "Nettoyer la commande de demo creee par les exemples precedents",
+    mongoQuery: `db.orders.deleteOne({ order_number: "ORD-2026-000002" })`,
+    run: async () => {
+      const result = await db.collection("orders").deleteOne({ order_number: "ORD-2026-000002" });
+      return [{ deletedCount: result.deletedCount }];
+    },
+  },
 ];
 
 // -- Live reload (SSE + fs.watch) ----------------------------------------------
@@ -458,6 +768,11 @@ app.get("/__livereload", (_req, res) => {
 });
 
 app.use(express.static(publicDir));
+
+app.get("/api/collections", async (_req, res) => {
+  await refreshCollections();
+  res.json(knownCollections);
+});
 
 app.get("/api/queries", (_req, res) => {
   res.json(
@@ -495,11 +810,16 @@ app.get("/api/queries/:id/run", async (req, res) => {
 // -- Custom query execution ----------------------------------------------------
 
 const ALLOWED_METHODS = [
-  "find",
-  "findOne",
-  "aggregate",
-  "countDocuments",
-  "distinct",
+  // Lecture
+  "find", "findOne", "aggregate", "countDocuments", "distinct",
+  "estimatedDocumentCount",
+  // Ecriture
+  "insertOne", "insertMany",
+  "updateOne", "updateMany", "replaceOne",
+  "deleteOne", "deleteMany",
+  "findOneAndUpdate", "findOneAndReplace", "findOneAndDelete",
+  // Index
+  "createIndex", "dropIndex", "indexes",
 ];
 
 // Find the index of the closing paren that matches the opening paren at pos
@@ -525,11 +845,6 @@ function findClosingParen(str, pos) {
 }
 
 const ALLOWED_MODIFIERS = ["sort", "limit", "skip"];
-const KNOWN_COLLECTIONS = [
-  "categories", "products", "skus", "suppliers",
-  "warehouses", "inventory", "users", "carts",
-  "orders", "reviews", "promotions",
-];
 
 function parseMongoQuery(raw) {
   // Must start with db.
@@ -562,12 +877,12 @@ function parseMongoQuery(raw) {
   const collection = head[1];
   const method = head[2];
 
-  // Check collection name
-  if (!KNOWN_COLLECTIONS.includes(collection)) {
+  // Check collection name against live list
+  if (knownCollections.length > 0 && !knownCollections.includes(collection)) {
     return {
       error:
-        `Collection "${collection}" inconnue.\n` +
-        `Collections disponibles : ${KNOWN_COLLECTIONS.join(", ")}`,
+        `Collection "${collection}" introuvable dans la base.\n` +
+        `Collections disponibles : ${knownCollections.join(", ")}`,
     };
   }
 
@@ -668,31 +983,53 @@ app.post("/api/custom-query", async (req, res) => {
     const col = db.collection(parsed.collection);
     let cursor = col[parsed.method](...parsed.args);
 
+    // Apply chained modifiers (sort/limit/skip) for cursors
     if (cursor && typeof cursor.sort === "function") {
       for (const mod of parsed.modifiers) {
         cursor = cursor[mod.name](mod.arg);
       }
     }
 
-    let result;
+    let raw_result;
     if (cursor && typeof cursor.toArray === "function") {
-      result = await cursor.toArray();
+      raw_result = await cursor.toArray();
     } else {
-      result = await cursor;
+      raw_result = await cursor;
     }
 
     const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
-    const isArray = Array.isArray(result);
+
+    // Normalize result for display
+    let result;
+    let count;
+    if (Array.isArray(raw_result)) {
+      result = raw_result;
+      count = raw_result.length;
+    } else if (raw_result && typeof raw_result === "object") {
+      // Write operation results (insertOne, updateOne, deleteOne, etc.)
+      result = [raw_result];
+      count = raw_result.insertedCount
+        ?? raw_result.modifiedCount
+        ?? raw_result.deletedCount
+        ?? (raw_result.value ? 1 : 0)
+        ?? 1;
+    } else if (typeof raw_result === "number") {
+      // countDocuments, estimatedDocumentCount
+      result = [{ count: raw_result }];
+      count = raw_result;
+    } else {
+      result = raw_result != null ? [raw_result] : [];
+      count = result.length;
+    }
 
     res.json({
       mongoQuery: raw,
       duration_ms: Math.round(durationMs * 100) / 100,
-      count: isArray ? result.length : result != null ? 1 : 0,
-      result: isArray ? result : result != null ? [result] : [],
+      count,
+      result,
     });
   } catch (err) {
     const msg = err.message || String(err);
-    // Extract MongoDB error code if present
     const codeMatch = msg.match(/\((\d+)\)/);
     const prefix = codeMatch ? `[MongoDB ${codeMatch[1]}] ` : "";
     res.status(500).json({
@@ -703,11 +1040,17 @@ app.post("/api/custom-query", async (req, res) => {
 
 // -- Start ---------------------------------------------------------------------
 
+async function refreshCollections() {
+  const cols = await db.listCollections().toArray();
+  knownCollections = cols.map((c) => c.name).sort();
+}
+
 async function start() {
   const client = new MongoClient(MONGO_URL);
   await client.connect();
   db = client.db(DB_NAME);
-  console.log(`Connected to MongoDB (${DB_NAME})`);
+  await refreshCollections();
+  console.log(`Connected to MongoDB (${DB_NAME}) — collections: ${knownCollections.join(", ")}`);
 
   app.listen(PORT, () => {
     console.log(`Query Explorer running at http://localhost:${PORT}`);

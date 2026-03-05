@@ -163,16 +163,49 @@ Le script d'initialisation insere un jeu de donnees coherent :
 
 ## Query Explorer
 
-L'interface web **Query Explorer** (`http://localhost:3000`) permet de visualiser et executer des requetes MongoDB predefinies couvrant les 4 domaines fonctionnels.
+L'interface web **Query Explorer** (`http://localhost:3000`) est un outil interactif pour explorer et manipuler la base de donnees MongoDB.
+
+### Requetes predefinies
+
+25 requetes couvrent 5 domaines fonctionnels :
+
+| Domaine | Nb | Exemples d'operations |
+|---|---|---|
+| Catalogue | 5 | `find`, `aggregate` avec `$lookup`, `$group`, `$unwind`, `$match`, `$project` |
+| Stock | 4 | Alertes de reapprovisionnement, stock par entrepot, `$expr` |
+| Commandes | 3 | Historique, chiffre d'affaires, panier moyen |
+| Engagement | 3 | Avis recents, promotions actives, top produits |
+| Ecriture | 10 | `insertOne`, `updateOne`, `deleteOne`, `findOneAndUpdate`, `$push`, `$pull`, `$inc` |
+
+Les requetes d'ecriture sont concues pour etre **idempotentes** : elles peuvent etre executees plusieurs fois sans effet de bord.
 
 Pour chaque requete, l'interface affiche :
 
 - La syntaxe MongoDB (telle qu'on l'ecrirait dans `mongosh`)
 - Le temps d'execution en millisecondes
-- Le nombre de documents retournes
+- Le nombre de documents retournes ou affectes
 - Le resultat JSON complet
 
-Les 15 requetes incluses couvrent les operations courantes : `find`, `find` avec filtres, `aggregate` avec `$lookup`, `$group`, `$unwind`, `$match`, `$project`, `$expr` et `$sort`.
+### Editeur de requetes personnalisees
+
+L'editeur integre permet d'ecrire et d'executer des requetes en syntaxe `mongosh` directement dans le navigateur.
+
+**Methodes supportees** : `find`, `findOne`, `aggregate`, `countDocuments`, `distinct`, `insertOne`, `insertMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `findOneAndUpdate`, `findOneAndDelete`, `replaceOne`, `createIndex`, `dropIndex`.
+
+**Modifieurs chainables** : `.sort()`, `.limit()`, `.skip()`, `.toArray()`.
+
+Les collections disponibles sont detectees dynamiquement depuis la base de donnees et proposees via un menu deroulant.
+
+Raccourcis : <kbd>Ctrl+Enter</kbd> pour executer, <kbd>Tab</kbd> pour indenter.
+
+### Hot reload
+
+Les fichiers du frontend (`app/public/`) sont montes en volume dans le conteneur. Toute modification est detectee automatiquement :
+
+- **CSS** : rechargement a chaud du style (sans perte d'etat)
+- **HTML / JS** : rechargement complet de la page
+
+Aucune action necessaire, le navigateur se met a jour automatiquement via Server-Sent Events.
 
 ---
 

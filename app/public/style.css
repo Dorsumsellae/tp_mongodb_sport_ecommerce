@@ -152,6 +152,7 @@ main {
 .domain-tag[data-domain="Stock"] { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
 .domain-tag[data-domain="Commandes"] { background: rgba(0, 184, 148, 0.15); color: var(--green); }
 .domain-tag[data-domain="Engagement"] { background: rgba(253, 121, 168, 0.15); color: var(--pink); }
+.domain-tag[data-domain="Ecriture"] { background: rgba(162, 155, 254, 0.15); color: var(--accent-light); }
 
 .query-card p {
   font-size: 0.8rem;

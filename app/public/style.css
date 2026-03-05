@@ -95,10 +95,18 @@ main {
   padding: 1.5rem 2rem;
   overflow-y: auto;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   justify-content: space-around;
   align-items: flex-start;
   gap: 1.5rem;
+}
+
+#query-list {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 /* Query cards */
@@ -110,6 +118,7 @@ main {
   margin-bottom: 0.75rem;
   cursor: pointer;
   transition: all 0.15s;
+  width: calc(33.333% - 0.5rem);
 }
 
 .query-card:hover {
@@ -148,6 +157,103 @@ main {
   font-size: 0.8rem;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+/* Editor panel */
+#editor-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  width: 100%;
+}
+
+#editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+#editor-header h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+#editor-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+#collection-hint {
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+#collection-hint:focus {
+  outline: 1px solid var(--accent);
+}
+
+#run-custom {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#run-custom:hover {
+  background: var(--accent-light);
+}
+
+#custom-query {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  padding: 1rem 1.25rem;
+  background: var(--bg);
+  color: var(--text);
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+#custom-query:focus {
+  outline: none;
+}
+
+#custom-query::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+#editor-help {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+#editor-help kbd {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
 }
 
 /* Result panel */

@@ -49,26 +49,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderQueries();
   }
 
-  function renderQueries() {
-    const filtered = activeDomain
-      ? queries.filter((q) => q.domain === activeDomain)
-      : queries;
-
-    queryList.innerHTML = "";
-    for (const query of filtered) {
-      const card = document.createElement("div");
-      card.className = "query-card";
-      card.dataset.id = query.id;
-      card.innerHTML = `
-        <span class="domain-tag" data-domain="${query.domain}">${query.domain}</span>
-        <h3>${query.title}</h3>
-        <p>${query.description}</p>
-      `;
-      card.addEventListener("click", () => runQuery(query, card));
-      queryList.appendChild(card);
-    }
-  }
-
   async function runQuery(query, card) {
     // Highlight active card
     document.querySelectorAll(".query-card").forEach((c) => c.classList.remove("active"));
@@ -108,6 +88,125 @@ document.addEventListener("DOMContentLoaded", async () => {
     resultPanel.classList.add("hidden");
     document.querySelectorAll(".query-card").forEach((c) => c.classList.remove("active"));
   });
+
+  // -- Custom query editor -------------------------------------------------------
+
+  const customQueryEl = document.getElementById("custom-query");
+  const runCustomBtn = document.getElementById("run-custom");
+  const collectionHint = document.getElementById("collection-hint");
+
+  // Populate collection dropdown
+  const collections = [
+    "categories", "products", "skus", "suppliers",
+    "warehouses", "inventory", "users", "carts",
+    "orders", "reviews", "promotions",
+  ];
+  for (const col of collections) {
+    const opt = document.createElement("option");
+    opt.value = col;
+    opt.textContent = col;
+    collectionHint.appendChild(opt);
+  }
+
+  collectionHint.addEventListener("change", () => {
+    if (!collectionHint.value) return;
+    const current = customQueryEl.value.trim();
+    if (!current || current === customQueryEl.placeholder) {
+      customQueryEl.value = `db.${collectionHint.value}.find({})`;
+    } else {
+      // Replace collection name in existing query
+      customQueryEl.value = current.replace(
+        /^(db\.)(\w+)(\.)/,
+        `$1${collectionHint.value}$3`
+      );
+    }
+    customQueryEl.focus();
+    collectionHint.value = "";
+  });
+
+  async function runCustomQuery() {
+    const raw = customQueryEl.value.trim();
+    if (!raw) return;
+
+    document.querySelectorAll(".query-card").forEach((c) => c.classList.remove("active"));
+
+    resultPanel.classList.remove("hidden");
+    resultTitle.textContent = "Requete personnalisee";
+    resultQuery.textContent = raw;
+    resultDuration.innerHTML = '<span class="loading"></span> Execution...';
+    resultCount.textContent = "";
+    resultData.textContent = "";
+
+    try {
+      const res = await fetch("/api/custom-query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: raw }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        resultDuration.textContent = "Erreur";
+        resultData.textContent = data.error;
+        return;
+      }
+
+      resultDuration.innerHTML = `Duree : <strong>${data.duration_ms} ms</strong>`;
+      resultCount.innerHTML = `Documents : <strong>${data.count}</strong>`;
+      resultData.textContent = JSON.stringify(data.result, null, 2);
+    } catch (err) {
+      resultDuration.textContent = "Erreur reseau";
+      resultData.textContent = err.message;
+    }
+
+    resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  runCustomBtn.addEventListener("click", runCustomQuery);
+
+  customQueryEl.addEventListener("keydown", (e) => {
+    // Ctrl+Enter or Cmd+Enter to run
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      runCustomQuery();
+    }
+    // Tab inserts 2 spaces
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = customQueryEl.selectionStart;
+      const end = customQueryEl.selectionEnd;
+      customQueryEl.value =
+        customQueryEl.value.substring(0, start) + "  " + customQueryEl.value.substring(end);
+      customQueryEl.selectionStart = customQueryEl.selectionEnd = start + 2;
+    }
+  });
+
+  // Clicking a predefined query also fills the editor
+  const origRunQuery = runQuery;
+  async function runQueryAndFill(query, card) {
+    customQueryEl.value = query.mongoQuery;
+    await origRunQuery(query, card);
+  }
+
+  function renderQueries() {
+    const filtered = activeDomain
+      ? queries.filter((q) => q.domain === activeDomain)
+      : queries;
+
+    queryList.innerHTML = "";
+    for (const query of filtered) {
+      const card = document.createElement("div");
+      card.className = "query-card";
+      card.dataset.id = query.id;
+      card.innerHTML = `
+        <span class="domain-tag" data-domain="${query.domain}">${query.domain}</span>
+        <h3>${query.title}</h3>
+        <p>${query.description}</p>
+      `;
+      card.addEventListener("click", () => runQueryAndFill(query, card));
+      queryList.appendChild(card);
+    }
+  }
 
   // Initial render
   renderQueries();

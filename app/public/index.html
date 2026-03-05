@@ -18,7 +18,23 @@
     </nav>
 
     <section id="content">
-      <div id="query-list"></div>
+      <div id="editor-panel">
+        <div id="editor-header">
+          <h2>Editeur de requetes</h2>
+          <div id="editor-actions">
+            <select id="collection-hint">
+              <option value="">Collections...</option>
+            </select>
+            <button id="run-custom" title="Ctrl+Enter">Executer</button>
+          </div>
+        </div>
+        <textarea id="custom-query" spellcheck="false" placeholder='db.products.find({ sport_type: "running" })'></textarea>
+        <div id="editor-help">
+          Methodes : find, findOne, aggregate, countDocuments, distinct
+          &mdash; Modifieurs : .sort() .limit() .skip()
+          &mdash; <kbd>Ctrl+Enter</kbd> pour executer
+        </div>
+      </div>
 
       <div id="result-panel" class="hidden">
         <div id="result-header">
@@ -41,6 +57,8 @@
           <pre id="result-data"><code></code></pre>
         </div>
       </div>
+
+      <div id="query-list"></div>
     </section>
   </main>
 

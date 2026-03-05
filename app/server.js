@@ -492,6 +492,104 @@ app.get("/api/queries/:id/run", async (req, res) => {
   }
 });
 
+// -- Custom query execution ----------------------------------------------------
+
+const ALLOWED_METHODS = [
+  "find",
+  "findOne",
+  "aggregate",
+  "countDocuments",
+  "distinct",
+];
+
+function parseMongoQuery(raw) {
+  // Supports: db.<collection>.<method>(<args>)  with optional .sort/.limit/.skip
+  const match = raw.match(
+    /^db\.(\w+)\.(\w+)\(([\s\S]*)\)(?:\.(sort|limit|skip)\(([\s\S]*?)\))*(?:\.(sort|limit|skip)\(([\s\S]*?)\))*(?:\.(sort|limit|skip)\(([\s\S]*?)\))*$/
+  );
+  if (!match) return null;
+
+  const collection = match[1];
+  const method = match[2];
+  if (!ALLOWED_METHODS.includes(method)) return null;
+
+  // Parse main arguments using relaxed JSON (MongoDB shell style)
+  let args;
+  const argsStr = match[3].trim();
+  try {
+    args = argsStr ? eval(`([${argsStr}])`) : [];
+  } catch {
+    return null;
+  }
+
+  // Collect chained modifiers (.sort, .limit, .skip)
+  const modifiers = [];
+  for (let i = 4; i < match.length; i += 3) {
+    if (match[i]) {
+      try {
+        modifiers.push({ name: match[i], arg: eval(`(${match[i + 1]})`) });
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  return { collection, method, args, modifiers };
+}
+
+app.use(express.json());
+
+app.post("/api/custom-query", async (req, res) => {
+  const raw = (req.body.query || "").trim();
+  if (!raw) return res.status(400).json({ error: "Requete vide" });
+
+  const parsed = parseMongoQuery(raw);
+  if (!parsed) {
+    return res.status(400).json({
+      error:
+        "Syntaxe non reconnue. Formats supportes :\n" +
+        "  db.<collection>.find({ ... })\n" +
+        "  db.<collection>.findOne({ ... })\n" +
+        "  db.<collection>.aggregate([ ... ])\n" +
+        "  db.<collection>.countDocuments({ ... })\n" +
+        "  db.<collection>.distinct(\"field\", { ... })\n" +
+        "Modifieurs optionnels : .sort() .limit() .skip()",
+    });
+  }
+
+  try {
+    const start = process.hrtime.bigint();
+    const col = db.collection(parsed.collection);
+    let cursor = col[parsed.method](...parsed.args);
+
+    // Apply chained modifiers (sort/limit/skip) for find/findOne
+    if (cursor && typeof cursor.sort === "function") {
+      for (const mod of parsed.modifiers) {
+        cursor = cursor[mod.name](mod.arg);
+      }
+    }
+
+    let result;
+    if (cursor && typeof cursor.toArray === "function") {
+      result = await cursor.toArray();
+    } else {
+      result = await cursor;
+    }
+
+    const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    const isArray = Array.isArray(result);
+
+    res.json({
+      mongoQuery: raw,
+      duration_ms: Math.round(durationMs * 100) / 100,
+      count: isArray ? result.length : result != null ? 1 : 0,
+      result: isArray ? result : result != null ? [result] : [],
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // -- Start ---------------------------------------------------------------------
 
 async function start() {

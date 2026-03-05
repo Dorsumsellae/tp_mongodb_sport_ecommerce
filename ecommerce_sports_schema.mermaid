@@ -1,0 +1,160 @@
+---
+title: "E-Commerce Vêtements de Sport — Schéma MongoDB"
+---
+erDiagram
+
+    CATEGORIES {
+        ObjectId _id
+        string name
+        string slug
+        string path
+        ObjectId parent_id
+        ObjectId[] ancestors
+        string image_url
+        int sort_order
+        boolean is_active
+    }
+
+    SUPPLIERS {
+        ObjectId _id
+        string company_name
+        string contact_name
+        string email
+        string phone
+        object address
+        string[] sport_specialties
+        string status
+    }
+
+    PRODUCTS {
+        ObjectId _id
+        string name
+        string slug
+        string description
+        ObjectId supplier_id
+        ObjectId[] category_ids
+        string[] tags
+        string brand
+        string sport_type
+        string gender_target
+        string[] materials
+        string[] images
+        number avg_rating
+        int review_count
+        string status
+    }
+
+    SKUS {
+        ObjectId _id
+        ObjectId product_id
+        string sku_code
+        string size
+        string color
+        string color_hex
+        number price
+        number compare_at_price
+        number weight_g
+        string[] images
+        boolean is_active
+    }
+
+    WAREHOUSES {
+        ObjectId _id
+        string name
+        string code
+        object address
+        string type
+        boolean is_active
+    }
+
+    INVENTORY {
+        ObjectId _id
+        ObjectId sku_id
+        ObjectId warehouse_id
+        int quantity
+        int reserved_quantity
+        string condition
+        int reorder_threshold
+        datetime last_restock_date
+    }
+
+    USERS {
+        ObjectId _id
+        string email
+        string first_name
+        string last_name
+        string phone
+        object[] addresses
+        string[] preferred_sports
+        string[] preferred_sizes
+        string loyalty_tier
+        datetime created_at
+    }
+
+    CARTS {
+        ObjectId _id
+        ObjectId user_id
+        object[] items
+        datetime expires_at
+        datetime updated_at
+    }
+
+    ORDERS {
+        ObjectId _id
+        string order_number
+        ObjectId user_id
+        object[] items
+        object shipping_address
+        object billing_address
+        object payment
+        object[] applied_promotions
+        number subtotal
+        number shipping_cost
+        number discount_total
+        number total
+        string status
+        datetime created_at
+    }
+
+    REVIEWS {
+        ObjectId _id
+        ObjectId product_id
+        ObjectId user_id
+        int rating
+        string title
+        string comment
+        string[] image_urls
+        object sport_context
+        boolean verified_purchase
+        datetime created_at
+    }
+
+    PROMOTIONS {
+        ObjectId _id
+        string code
+        string name
+        string type
+        number value
+        number max_discount_amount
+        object conditions
+        datetime start_date
+        datetime end_date
+        int max_total_uses
+        int max_uses_per_user
+        string status
+        boolean stackable
+    }
+
+    SUPPLIERS ||--o{ PRODUCTS : "fournit"
+    CATEGORIES ||--o{ PRODUCTS : "classifie"
+    CATEGORIES ||--o| CATEGORIES : "parent"
+    PRODUCTS ||--o{ SKUS : "décline en"
+    SKUS ||--o{ INVENTORY : "stocké dans"
+    WAREHOUSES ||--o{ INVENTORY : "contient"
+    USERS ||--o{ ORDERS : "passe"
+    USERS ||--o| CARTS : "possède"
+    USERS ||--o{ REVIEWS : "rédige"
+    PRODUCTS ||--o{ REVIEWS : "reçoit"
+    SKUS }o--o{ CARTS : "ajouté dans"
+    SKUS }o--o{ ORDERS : "commandé via"
+    PROMOTIONS }o--o{ ORDERS : "appliquée à"

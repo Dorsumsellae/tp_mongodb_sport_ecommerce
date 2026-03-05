@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MongoDB Query Explorer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>MongoDB Query Explorer</h1>
+    <p class="subtitle">E-Commerce Vetements de Sport</p>
+  </header>
+
+  <main>
+    <nav id="sidebar">
+      <div id="domain-filters"></div>
+    </nav>
+
+    <section id="content">
+      <div id="query-list"></div>
+
+      <div id="result-panel" class="hidden">
+        <div id="result-header">
+          <h2 id="result-title"></h2>
+          <button id="close-result">&times;</button>
+        </div>
+
+        <div class="result-section">
+          <h3>Requete MongoDB</h3>
+          <pre id="result-query"><code></code></pre>
+        </div>
+
+        <div class="result-meta">
+          <span id="result-duration"></span>
+          <span id="result-count"></span>
+        </div>
+
+        <div class="result-section">
+          <h3>Resultat</h3>
+          <pre id="result-data"><code></code></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (() => {
+      const es = new EventSource("/__livereload");
+      es.onmessage = (e) => {
+        const file = e.data;
+        if (file.endsWith(".css")) {
+          document.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
+            link.href = link.href.replace(/\?.*$/, "") + "?t=" + Date.now();
+          });
+        } else {
+          location.reload();
+        }
+      };
+    })();
+  </script>
+</body>
+</html>

@@ -16,12 +16,13 @@ Ce document decrit l'architecture de la base de donnees MongoDB pour un site e-c
 docker compose up -d
 ```
 
-Deux services demarrent :
+Trois services demarrent :
 
 | Service | URL | Description |
 |---|---|---|
 | MongoDB | `localhost:27017` | Base de donnees (base : `ecommerce_sport`) |
 | Mongo Express | `http://localhost:8081` | Interface web d'administration |
+| Query Explorer | `http://localhost:3000` | Visualisation interactive des requetes MongoDB |
 
 Au premier lancement, le script `mongo-init/01-init.js` cree automatiquement les 11 collections, les index et un jeu de donnees de demonstration.
 
@@ -45,11 +46,16 @@ docker compose down -v
 
 ### Structure du projet
 
-```
+```text
 .
 ├── docker-compose.yml              # Orchestration des services
 ├── mongo-init/
 │   └── 01-init.js                  # Script d'initialisation (collections, index, seed)
+├── app/                            # Query Explorer (interface web)
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── server.js                   # API Express + definitions des requetes
+│   └── public/                     # Frontend (HTML/CSS/JS vanilla)
 ├── ecommerce_sports_schema.mermaid # Diagramme ER au format Mermaid
 └── README.md
 ```
@@ -152,6 +158,21 @@ Le script d'initialisation insere un jeu de donnees coherent :
 - **1 panier actif** et **1 commande livree**
 - **3 avis** avec contexte sportif
 - **3 promotions** -- pourcentage, bienvenue, livraison gratuite
+
+---
+
+## Query Explorer
+
+L'interface web **Query Explorer** (`http://localhost:3000`) permet de visualiser et executer des requetes MongoDB predefinies couvrant les 4 domaines fonctionnels.
+
+Pour chaque requete, l'interface affiche :
+
+- La syntaxe MongoDB (telle qu'on l'ecrirait dans `mongosh`)
+- Le temps d'execution en millisecondes
+- Le nombre de documents retournes
+- Le resultat JSON complet
+
+Les 15 requetes incluses couvrent les operations courantes : `find`, `find` avec filtres, `aggregate` avec `$lookup`, `$group`, `$unwind`, `$match`, `$project`, `$expr` et `$sort`.
 
 ---
 

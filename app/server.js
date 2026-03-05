@@ -524,48 +524,130 @@ function findClosingParen(str, pos) {
   return -1;
 }
 
+const ALLOWED_MODIFIERS = ["sort", "limit", "skip"];
+const KNOWN_COLLECTIONS = [
+  "categories", "products", "skus", "suppliers",
+  "warehouses", "inventory", "users", "carts",
+  "orders", "reviews", "promotions",
+];
+
 function parseMongoQuery(raw) {
+  // Must start with db.
+  if (!raw.startsWith("db.")) {
+    return { error: "La requete doit commencer par \"db.\"" };
+  }
+
   // Match: db.<collection>.<method>(
   const head = raw.match(/^db\.(\w+)\.(\w+)\(/);
-  if (!head) return null;
+  if (!head) {
+    const partial = raw.match(/^db\.(\w+)$/);
+    if (partial) {
+      return {
+        error:
+          `Il manque la methode apres "db.${partial[1]}".\n` +
+          `Exemple : db.${partial[1]}.find({})`,
+      };
+    }
+    const noArgs = raw.match(/^db\.(\w+)\.(\w+)$/);
+    if (noArgs) {
+      return {
+        error:
+          `Il manque les parentheses apres "${noArgs[2]}".\n` +
+          `Exemple : db.${noArgs[1]}.${noArgs[2]}({})`,
+      };
+    }
+    return { error: "Format attendu : db.<collection>.<methode>(...)" };
+  }
 
   const collection = head[1];
   const method = head[2];
-  if (!ALLOWED_METHODS.includes(method)) return null;
+
+  // Check collection name
+  if (!KNOWN_COLLECTIONS.includes(collection)) {
+    return {
+      error:
+        `Collection "${collection}" inconnue.\n` +
+        `Collections disponibles : ${KNOWN_COLLECTIONS.join(", ")}`,
+    };
+  }
+
+  // Check method name
+  if (!ALLOWED_METHODS.includes(method)) {
+    return {
+      error:
+        `Methode "${method}" non supportee.\n` +
+        `Methodes disponibles : ${ALLOWED_METHODS.join(", ")}`,
+    };
+  }
 
   // Find matching closing paren for the method call
-  const openIdx = head[0].length - 1; // index of '('
+  const openIdx = head[0].length - 1;
   const closeIdx = findClosingParen(raw, openIdx);
-  if (closeIdx === -1) return null;
+  if (closeIdx === -1) {
+    return {
+      error:
+        `Parenthese fermante manquante pour ${method}(...).\n` +
+        "Verifiez que toutes les parentheses, crochets et accolades sont fermes.",
+    };
+  }
 
   const argsStr = raw.substring(openIdx + 1, closeIdx).trim();
   let args;
   try {
     args = argsStr ? eval(`([${argsStr}])`) : [];
-  } catch {
-    return null;
+  } catch (e) {
+    return {
+      error:
+        `Erreur de syntaxe dans les arguments de ${method}() :\n` +
+        `  ${e.message}\n\n` +
+        `Arguments recus :\n  ${argsStr.substring(0, 200)}`,
+    };
   }
 
-  // Parse chained modifiers after the main call: .sort(...).limit(...).skip(...)
+  // Parse chained modifiers
   const modifiers = [];
   let rest = raw.substring(closeIdx + 1).trim();
-  const modPattern = /^\.(sort|limit|skip)\(/;
+  const modPattern = /^\.([\w]+)\(/;
   let modMatch;
   while ((modMatch = rest.match(modPattern))) {
     const modName = modMatch[1];
+
+    if (!ALLOWED_MODIFIERS.includes(modName)) {
+      return {
+        error:
+          `Modifieur ".${modName}()" non supporte.\n` +
+          `Modifieurs disponibles : ${ALLOWED_MODIFIERS.map((m) => "." + m + "()").join(", ")}`,
+      };
+    }
+
     const modOpenIdx = modMatch[0].length - 1;
     const modCloseIdx = findClosingParen(rest, modOpenIdx);
-    if (modCloseIdx === -1) return null;
+    if (modCloseIdx === -1) {
+      return {
+        error: `Parenthese fermante manquante pour .${modName}(...).`,
+      };
+    }
     const modArgsStr = rest.substring(modOpenIdx + 1, modCloseIdx).trim();
     try {
       modifiers.push({ name: modName, arg: eval(`(${modArgsStr})`) });
-    } catch {
-      return null;
+    } catch (e) {
+      return {
+        error:
+          `Erreur de syntaxe dans .${modName}() :\n` +
+          `  ${e.message}\n\n` +
+          `Arguments recus : ${modArgsStr}`,
+      };
     }
     rest = rest.substring(modCloseIdx + 1).trim();
   }
 
-  if (rest.length > 0) return null;
+  if (rest.length > 0) {
+    return {
+      error:
+        `Texte inattendu apres la requete :\n  "${rest.substring(0, 100)}"\n\n` +
+        "Verifiez la syntaxe apres la derniere parenthese fermante.",
+    };
+  }
 
   return { collection, method, args, modifiers };
 }
@@ -574,20 +656,11 @@ app.use(express.json());
 
 app.post("/api/custom-query", async (req, res) => {
   const raw = (req.body.query || "").trim();
-  if (!raw) return res.status(400).json({ error: "Requete vide" });
+  if (!raw) return res.status(400).json({ error: "Requete vide." });
 
   const parsed = parseMongoQuery(raw);
-  if (!parsed) {
-    return res.status(400).json({
-      error:
-        "Syntaxe non reconnue. Formats supportes :\n" +
-        "  db.<collection>.find({ ... })\n" +
-        "  db.<collection>.findOne({ ... })\n" +
-        "  db.<collection>.aggregate([ ... ])\n" +
-        "  db.<collection>.countDocuments({ ... })\n" +
-        "  db.<collection>.distinct(\"field\", { ... })\n" +
-        "Modifieurs optionnels : .sort() .limit() .skip()",
-    });
+  if (parsed.error) {
+    return res.status(400).json({ error: parsed.error });
   }
 
   try {
@@ -595,7 +668,6 @@ app.post("/api/custom-query", async (req, res) => {
     const col = db.collection(parsed.collection);
     let cursor = col[parsed.method](...parsed.args);
 
-    // Apply chained modifiers (sort/limit/skip) for find/findOne
     if (cursor && typeof cursor.sort === "function") {
       for (const mod of parsed.modifiers) {
         cursor = cursor[mod.name](mod.arg);
@@ -619,7 +691,13 @@ app.post("/api/custom-query", async (req, res) => {
       result: isArray ? result : result != null ? [result] : [],
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const msg = err.message || String(err);
+    // Extract MongoDB error code if present
+    const codeMatch = msg.match(/\((\d+)\)/);
+    const prefix = codeMatch ? `[MongoDB ${codeMatch[1]}] ` : "";
+    res.status(500).json({
+      error: `${prefix}${msg}`,
+    });
   }
 });
 

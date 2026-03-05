@@ -502,37 +502,70 @@ const ALLOWED_METHODS = [
   "distinct",
 ];
 
-function parseMongoQuery(raw) {
-  // Supports: db.<collection>.<method>(<args>)  with optional .sort/.limit/.skip
-  const match = raw.match(
-    /^db\.(\w+)\.(\w+)\(([\s\S]*)\)(?:\.(sort|limit|skip)\(([\s\S]*?)\))*(?:\.(sort|limit|skip)\(([\s\S]*?)\))*(?:\.(sort|limit|skip)\(([\s\S]*?)\))*$/
-  );
-  if (!match) return null;
+// Find the index of the closing paren that matches the opening paren at pos
+function findClosingParen(str, pos) {
+  let depth = 0;
+  for (let i = pos; i < str.length; i++) {
+    if (str[i] === "(" || str[i] === "[" || str[i] === "{") depth++;
+    else if (str[i] === ")" || str[i] === "]" || str[i] === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+    // Skip string literals
+    if (str[i] === '"' || str[i] === "'") {
+      const quote = str[i];
+      i++;
+      while (i < str.length && str[i] !== quote) {
+        if (str[i] === "\\") i++;
+        i++;
+      }
+    }
+  }
+  return -1;
+}
 
-  const collection = match[1];
-  const method = match[2];
+function parseMongoQuery(raw) {
+  // Match: db.<collection>.<method>(
+  const head = raw.match(/^db\.(\w+)\.(\w+)\(/);
+  if (!head) return null;
+
+  const collection = head[1];
+  const method = head[2];
   if (!ALLOWED_METHODS.includes(method)) return null;
 
-  // Parse main arguments using relaxed JSON (MongoDB shell style)
+  // Find matching closing paren for the method call
+  const openIdx = head[0].length - 1; // index of '('
+  const closeIdx = findClosingParen(raw, openIdx);
+  if (closeIdx === -1) return null;
+
+  const argsStr = raw.substring(openIdx + 1, closeIdx).trim();
   let args;
-  const argsStr = match[3].trim();
   try {
     args = argsStr ? eval(`([${argsStr}])`) : [];
   } catch {
     return null;
   }
 
-  // Collect chained modifiers (.sort, .limit, .skip)
+  // Parse chained modifiers after the main call: .sort(...).limit(...).skip(...)
   const modifiers = [];
-  for (let i = 4; i < match.length; i += 3) {
-    if (match[i]) {
-      try {
-        modifiers.push({ name: match[i], arg: eval(`(${match[i + 1]})`) });
-      } catch {
-        return null;
-      }
+  let rest = raw.substring(closeIdx + 1).trim();
+  const modPattern = /^\.(sort|limit|skip)\(/;
+  let modMatch;
+  while ((modMatch = rest.match(modPattern))) {
+    const modName = modMatch[1];
+    const modOpenIdx = modMatch[0].length - 1;
+    const modCloseIdx = findClosingParen(rest, modOpenIdx);
+    if (modCloseIdx === -1) return null;
+    const modArgsStr = rest.substring(modOpenIdx + 1, modCloseIdx).trim();
+    try {
+      modifiers.push({ name: modName, arg: eval(`(${modArgsStr})`) });
+    } catch {
+      return null;
     }
+    rest = rest.substring(modCloseIdx + 1).trim();
   }
+
+  if (rest.length > 0) return null;
 
   return { collection, method, args, modifiers };
 }

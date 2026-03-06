@@ -736,6 +736,134 @@ const queries = [
       return [{ deletedCount: result.deletedCount }];
     },
   },
+
+  // -- Scenario Louis : Achat du Nike Air Zoom Pegasus 41
+  {
+    id: "louis-step1-check-stock",
+    domain: "Scenario Louis",
+    title: "Etape 1 - Verifier le stock disponible",
+    description: "Louis verifie qu'il reste du stock taille 45 pour le Nike Air Zoom Pegasus 41",
+    mongoQuery: `db.inventory.aggregate([
+  { $lookup: { from: "skus", localField: "sku_id", foreignField: "_id", as: "sku" } },
+  { $unwind: "$sku" },
+  { $match: { "sku.product_id": "69aa91177afdb8d18c8563b9", "sku.size": "45" } },
+  { $project: {
+      "sku.sku_code": 1, "sku.size": 1, "sku.color": 1,
+      quantity: 1, reserved_quantity: 1,
+      available: { $subtract: ["$quantity", "$reserved_quantity"] }
+  }}
+])`,
+    run: async () => {
+      const product = await db.collection("products").findOne({ _id: "69aa91177afdb8d18c8563b9" });
+      if (!product) return [{ message: "Produit introuvable." }];
+      return db.collection("inventory").aggregate([
+        { $lookup: { from: "skus", localField: "sku_id", foreignField: "_id", as: "sku" } },
+        { $unwind: "$sku" },
+        { $match: { "sku.product_id": product._id, "sku.size": "42" } },
+        {
+          $project: {
+            "sku.sku_code": 1, "sku.size": 1, "sku.color": 1,
+            quantity: 1, reserved_quantity: 1,
+            available: { $subtract: ["$quantity", "$reserved_quantity"] },
+          },
+        },
+      ]).toArray();
+    },
+  },
+  {
+    id: "louis-step2-reserve-stock",
+    domain: "Scenario Louis",
+    title: "Etape 2 - Reserver le stock (achat)",
+    description: "Louis achete 1 paire taille 45 : on incremente reserved_quantity de +1 si stock disponible",
+    mongoQuery: `db.inventory.updateOne(
+  {
+    sku_id: <sku_id_taille_45>,
+    $expr: { $gt: [{ $subtract: ["$quantity", "$reserved_quantity"] }, 0] }
+  },
+  {
+    $inc: { reserved_quantity: 1 },
+    $set: { updated_at: new Date() }
+  }
+)`,
+    run: async () => {
+      const sku = await db.collection("skus").findOne({
+        product_id: "69aa91177afdb8d18c8563b9",
+        size: "42",
+      });
+      if (!sku) return [{ message: "SKU taille 42 introuvable." }];
+      const result = await db.collection("inventory").updateOne(
+        {
+          sku_id: sku._id,
+          $expr: { $gt: [{ $subtract: ["$quantity", "$reserved_quantity"] }, 0] },
+        },
+        {
+          $inc: { reserved_quantity: 1 },
+          $set: { updated_at: new Date() },
+        }
+      );
+      if (result.matchedCount === 0) {
+        return [{ message: "Stock insuffisant — commande impossible." }];
+      }
+      return [{ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount, message: "Stock reserve avec succes." }];
+    },
+  },
+  {
+    id: "louis-step3-create-order",
+    domain: "Scenario Louis",
+    title: "Etape 3 - Creer la commande de Louis",
+    description: "Insertion de la commande avec snapshot du produit, prix et adresse au moment de l'achat",
+    mongoQuery: `db.orders.insertOne({
+  order_number: "ORD-LOUIS-001",
+  user_id: <user_id_louis>,
+  items: [{
+    product_id: "69aa91177afdb8d18c8563b9",
+    product_name: "Nike Air Zoom Pegasus 41",
+    sku_code: "NK-PEG41-WHT-45",
+    size: "45", color: "Blanc",
+    price: 129.99, quantity: 1
+  }],
+  subtotal: 129.99,
+  shipping_cost: 4.99,
+  discount_total: 0,
+  total: 134.98,
+  status: "confirmed",
+  created_at: new Date()
+})`,
+    run: async () => {
+      const user = await db.collection("users").findOne();
+      const sku = await db.collection("skus").findOne({
+        product_id: "69aa91177afdb8d18c8563b9",
+        size: "42",
+      });
+      // Nettoyage si la demo a deja ete lancee
+      await db.collection("orders").deleteOne({ order_number: "ORD-LOUIS-001" });
+      const result = await db.collection("orders").insertOne({
+        order_number: "ORD-LOUIS-001",
+        user_id: user._id,
+        items: [{
+          product_id: "69aa91177afdb8d18c8563b9",
+          product_name: "Nike Air Zoom Pegasus 41",
+          sku_code: sku ? sku.sku_code : "NK-PEG41-WHT-45",
+          size: "45",
+          color: "Blanc",
+          price: 129.99,
+          quantity: 1,
+        }],
+        shipping_address: user.addresses ? user.addresses[0] : {},
+        subtotal: 129.99,
+        shipping_cost: 4.99,
+        discount_total: 0,
+        total: 134.98,
+        status: "confirmed",
+        created_at: new Date(),
+      });
+      return [{
+        acknowledged: result.acknowledged,
+        insertedId: result.insertedId,
+        message: "Commande ORD-LOUIS-001 creee avec succes !",
+      }];
+    },
+  },
 ];
 
 // -- Live reload (SSE + fs.watch) ----------------------------------------------

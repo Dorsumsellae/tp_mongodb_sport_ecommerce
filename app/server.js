@@ -737,6 +737,82 @@ const queries = [
     },
   },
   {
+  id: "Catalogue_produit",
+  domain: "Gaspard_Sadourny",
+  title: "Produits de running",
+  description: "Scenario 1 : Afficher tous les produits actifs de type running. Utilise find() avec deux filtres : sport_type et status.",
+  mongoQuery: 'db.products.find({ sport_type: "running", status: "active" })',
+  run: () =>
+    db.collection("products")
+      .find({ sport_type: "running", status: "active" })
+      .toArray(),
+},
+{
+  id: "Catalogue_categories",
+  domain: "Gaspard_Sadourny",
+  title: "Arbre des categories",
+  description: "Scenario 2 : Naviguer dans la hierarchie des categories grace au materialized path. Les categories sont triees par leur chemin pour reconstituer l arbre parent -> enfant.",
+  mongoQuery: "db.categories.find().sort({ path: 1 })",
+  run: () =>
+    db.collection("categories").find().sort({ path: 1 }).toArray(),
+},
+{
+  id: "Catalogue_materiau",
+  domain: "Gaspard_Sadourny",
+  title: "Recherche par materiau",
+  description: "Scenario 3 : Rechercher tous les produits contenant le materiau mesh. Utilise find() sur un champ tableau : MongoDB verifie si la valeur est presente dans le tableau materials.",
+  mongoQuery: 'db.products.find({ materials: "mesh" })',
+  run: () =>
+    db.collection("products").find({ materials: "mesh" }).toArray(),
+},
+{
+  id: "Catalogue_variantes",
+  domain: "Gaspard_Sadourny",
+  title: "Variantes d'un produit",
+  description: "Scenario 4 : Afficher toutes les variantes (SKUs) d un produit donne : taille, couleur et prix. Les resultats sont tries par taille puis par couleur pour une lecture claire.",
+  mongoQuery: 'db.skus.find({ sku_code: "NK-PEG41-WHT-42" }).sort({ size: 1, color: 1 })',
+  run: () =>
+    db.collection("skus")
+      .find({ sku_code: "NK-PEG41-WHT-42" })
+      .sort({ size: 1, color: 1 })
+      .toArray(),
+},
+{
+  id: "Catalogue_fournisseur",
+  domain: "Gaspard_Sadourny",
+  title: "Produit avec son fournisseur ($lookup)",
+  description: "Scenario 5 : Jointure entre la collection products et suppliers via $lookup. Permet d afficher pour chaque produit le nom et les specialites sportives de son fournisseur, comme un JOIN en SQL.",
+  mongoQuery: `db.products.aggregate([
+  { $lookup: {
+      from: "suppliers",
+      localField: "supplier_id",
+      foreignField: "_id",
+      as: "supplier"
+  }},
+  { $unwind: "$supplier" },
+  { $project: {
+      name: 1, brand: 1, sport_type: 1,
+      "supplier.company_name": 1,
+      "supplier.sport_specialties": 1
+  }}
+])`,
+  run: () =>
+    db.collection("products").aggregate([
+      { $lookup: {
+          from: "suppliers",
+          localField: "supplier_id",
+          foreignField: "_id",
+          as: "supplier",
+      }},
+      { $unwind: "$supplier" },
+      { $project: {
+          name: 1, brand: 1, sport_type: 1,
+          "supplier.company_name": 1,
+          "supplier.sport_specialties": 1,
+      }},
+    ]).toArray(),
+},
+  {
     id: "create-supplier-demo",
     domain: "Nicolas",
     title: "Créer un fournisseur de demo",
@@ -1411,3 +1487,5 @@ start().catch((err) => {
   console.error("Failed to start:", err);
   process.exit(1);
 });
+
+// ── À ajouter dans le tableau queries[] de server.js ──

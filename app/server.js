@@ -1,5 +1,5 @@
 const express = require("express");
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId: _ObjectId } = require("mongodb");
 const path = require("path");
 const fs = require("fs");
 
@@ -845,6 +845,12 @@ function findClosingParen(str, pos) {
 }
 
 const ALLOWED_MODIFIERS = ["sort", "limit", "skip"];
+
+// Alias mongosh disponibles dans eval() — appelables sans "new"
+// eslint-disable-next-line no-unused-vars
+const ObjectId = (s) => new _ObjectId(s);
+// eslint-disable-next-line no-unused-vars
+const ISODate = (s) => (s ? new Date(s) : new Date());
 
 function parseMongoQuery(raw) {
   // Must start with db.

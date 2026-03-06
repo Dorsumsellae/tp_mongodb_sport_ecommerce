@@ -439,7 +439,7 @@ const queries = [
     {
       sku_id: ObjectId("<sku_id>"),
       product_name: "Nike Air Zoom Pegasus 41",
-      size: "42", color: "Blanc",
+      size: "45", color: "Blanc",
       price: 129.99, quantity: 1
     },
     {
@@ -461,7 +461,7 @@ const queries = [
       const result = await db.collection("carts").insertOne({
         user_id: user._id,
         items: [
-          { sku_id: skuShoe._id, product_name: "Nike Air Zoom Pegasus 41", size: "42", color: "Blanc", price: 129.99, quantity: 1 },
+          { sku_id: skuShoe._id, product_name: "Nike Air Zoom Pegasus 41", size: "45", color: "Blanc", price: 129.99, quantity: 1 },
           { sku_id: skuTee._id, product_name: "Nike Dri-FIT Running Tee", size: "M", color: "Bleu", price: 34.99, quantity: 2 },
         ],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -482,7 +482,7 @@ const queries = [
       items: {
         sku_id: ObjectId("<sku_id>"),
         product_name: "Adidas Ultraboost Light",
-        size: "42", color: "Gris",
+        size: "45", color: "Gris",
         price: 179.99, quantity: 1
       }
     },
@@ -496,7 +496,7 @@ const queries = [
         { user_id: user._id },
         {
           $push: {
-            items: { sku_id: sku._id, product_name: "Adidas Ultraboost Light", size: "42", color: "Gris", price: 179.99, quantity: 1 },
+            items: { sku_id: sku._id, product_name: "Adidas Ultraboost Light", size: "45", color: "Gris", price: 179.99, quantity: 1 },
           },
           $set: { updated_at: new Date() },
         }
@@ -788,7 +788,7 @@ const queries = [
     run: async () => {
       const sku = await db.collection("skus").findOne({
         product_id: "69aa91177afdb8d18c8563b9",
-        size: "42",
+        size: "45",
       });
       if (!sku) return [{ message: "SKU taille 42 introuvable." }];
       const result = await db.collection("inventory").updateOne(
@@ -833,7 +833,7 @@ const queries = [
       const user = await db.collection("users").findOne();
       const sku = await db.collection("skus").findOne({
         product_id: "69aa91177afdb8d18c8563b9",
-        size: "42",
+        size: "45",
       });
       // Nettoyage si la demo a deja ete lancee
       await db.collection("orders").deleteOne({ order_number: "ORD-LOUIS-001" });

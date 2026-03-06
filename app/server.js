@@ -736,6 +736,195 @@ const queries = [
       return [{ deletedCount: result.deletedCount }];
     },
   },
+  {
+    id: "create-supplier-demo",
+    domain: "Nicolas",
+    title: "Créer un fournisseur de demo",
+    description: "Créer un fournisseur de demo pour les exemples",
+    mongoQuery: `db.suppliers.insertOne({ company_name: "Demo Supplier", contact_name: "Demo Contact", email: "demo@example.com", phone: "+33 1 00 00 00 00", address: { street: "1 Rue Demo", city: "Paris", zip: "75001", country: "FR" }, sport_specialties: ["running"], status: "active" })`,
+    run: async () => {
+      const result = await db.collection("suppliers").insertOne({ company_name: "Demo Supplier", contact_name: "Demo Contact", email: "demo@example.com", phone: "+33 1 00 00 00 00", address: { street: "1 Rue Demo", city: "Paris", zip: "75001", country: "FR" }, sport_specialties: ["running"], status: "active" });
+      return [{ acknowledged: result.acknowledged, insertedId: result.insertedId }];
+    },
+  },
+  {
+    id: "update-supplier-demo",
+    domain: "Nicolas",
+    title: "Mettre à jour un fournisseur",
+    description: "Mettre à jour les informations d'un fournisseur de demo",
+    mongoQuery: `db.suppliers.updateOne({ company_name: "Demo Supplier" }, { $set: { email: "updated@example.com", phone: "+33 1 23 45 67 89", status: "active" } })`,
+    run: async () => {
+      const result = await db.collection("suppliers").updateOne({ company_name: "Demo Supplier" }, { $set: { email: "updated@example.com", phone: "+33 1 23 45 67 89", status: "active" } });
+      return [{ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount }];
+    },
+  },
+  {
+    id: "delete-supplier-demo",
+    domain: "Nicolas",
+    title: "Supprimer un fournisseur de demo",
+    description: "Supprimer le fournisseur de demo pour nettoyer la base",
+    mongoQuery: `db.suppliers.deleteOne({ company_name: "Demo Supplier" })`,
+    run: async () => {
+      const result = await db.collection("suppliers").deleteOne({ company_name: "Demo Supplier" });
+      return [{ deletedCount: result.deletedCount }];
+    },
+  },
+  {
+    id: "create-product-demo",
+    domain: "Nicolas",
+    title: "Créer un produit",
+    description: "Créer un produit de demo pour les exemples",
+    mongoQuery: `db.products.insertOne({ name: "Demo Product", slug: "demo-product", description: "Produit de demo", category_ids: [], tags: ["demo"], brand: "Demo", sport_type: "running", gender_target: "unisexe", materials: ["mesh"], images: [], avg_rating: 0, review_count: 0, status: "active" })`,
+    run: async () => {
+      const result = await db.collection("products").insertOne({ name: "Demo Product", slug: "demo-product", description: "Produit de demo", category_ids: [], tags: ["demo"], brand: "Demo", sport_type: "running", gender_target: "unisexe", materials: ["mesh"], images: [], avg_rating: 0, review_count: 0, status: "active" });
+      return [{ acknowledged: result.acknowledged, insertedId: result.insertedId }];
+    },
+  },
+  {
+    id: "update-product-demo",
+    domain: "Nicolas",
+    title: "Mettre à jour un produit",
+    description: "Mettre à jour les informations d'un produit de demo",
+    mongoQuery: `db.products.updateOne({ slug: "demo-product" }, { $set: { description: "Produit de demo mis a jour", status: "draft" } })`,
+    run: async () => {
+      const result = await db.collection("products").updateOne({ slug: "demo-product" }, { $set: { description: "Produit de demo mis a jour", status: "draft" } });
+      return [{ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount }];
+    },
+  },
+  {
+    id: "delete-product-demo",
+    domain: "Nicolas",
+    title: "Supprimer un produit",
+    description: "Supprimer le produit de demo pour nettoyer la base",
+    mongoQuery: `db.products.deleteOne({ slug: "demo-product" })`,
+    run: async () => {
+      const result = await db.collection("products").deleteOne({ slug: "demo-product" });
+      return [{ deletedCount: result.deletedCount }];
+    }
+  },
+  {
+    id: "create-skus-demo",
+    domain: "Nicolas",
+    title: "Créer des SKUs",
+    description: "Créer des SKUs de demo pour les exemples",
+    mongoQuery: `db.skus.insertMany([{ sku_code: "DEMO-SKU-001", size: "42", color: "Blanc", color_hex: "#FFFFFF", price: 24.99, compare_at_price: null, weight_g: 250, images: [], is_active: true }, { sku_code: "DEMO-SKU-002", size: "43", color: "Noir", color_hex: "#000000", price: 29.99, compare_at_price: null, weight_g: 260, images: [], is_active: true }])`,
+    run: async () => {
+      const product = await db.collection("products").findOne({ slug: "demo-product" });
+      const productId = product ? product._id : null;
+      const result = await db.collection("skus").insertMany([
+        { product_id: productId, sku_code: "DEMO-SKU-001", size: "42", color: "Blanc", color_hex: "#FFFFFF", price: 24.99, compare_at_price: null, weight_g: 250, images: [], is_active: true },
+        { product_id: productId, sku_code: "DEMO-SKU-002", size: "43", color: "Noir", color_hex: "#000000", price: 29.99, compare_at_price: null, weight_g: 260, images: [], is_active: true },
+      ]);
+      return [{ acknowledged: result.acknowledged, insertedIds: result.insertedIds }];
+    }
+  },
+  {
+    id: "add-sku-to-inventory-demo",
+    domain: "Nicolas",
+    title: "Ajouter un SKU à l'inventaire",
+    description: "Ajouter un SKU de demo à l'inventaire pour les exemples",
+    mongoQuery: `db.inventory.insertOne({ sku_id: ObjectId("<sku_id>"), warehouse_id: ObjectId("<warehouse_id>"), quantity: 100, reserved_quantity: 0, condition: "new", reorder_threshold: 10, last_restock_date: new Date() })`,
+    run: async () => {
+      const [sku, wh] = await Promise.all([
+        db.collection("skus").findOne({ sku_code: "DEMO-SKU-001" }),
+        db.collection("warehouses").findOne({ code: "WH-PAR-01" }),
+      ]);
+      const result = await db.collection("inventory").insertOne({ sku_id: sku._id, warehouse_id: wh._id, quantity: 100, reserved_quantity: 0, condition: "new", reorder_threshold: 10, last_restock_date: new Date() });
+      return [{ acknowledged: result.acknowledged, insertedId: result.insertedId }];
+    }
+  },
+  {
+    id: "total-stock-per-product-demo",
+    domain: "Nicolas",
+    title: "Stock total par produit",
+    description:
+      "Agregation : stock total disponible par produit, toutes variantes et entrepots confondus",
+    mongoQuery: `db.inventory.aggregate([
+  { $lookup: { from: "skus", localField: "sku_id", foreignField: "_id", as: "sku" } },
+  { $unwind: "$sku" },
+  { $group: {
+      _id: "$sku.product_id",
+      total_quantity: { $sum: "$quantity" },
+      total_reserved: { $sum: "$reserved_quantity" }
+  }},
+  { $lookup: { from: "products", localField: "_id", foreignField: "_id", as: "product" } },
+  { $unwind: "$product" },
+  { $project: {
+      product_name: "$product.name",
+      total_quantity: 1,
+      total_reserved: 1,
+      available: { $subtract: ["$total_quantity", "$total_reserved"] }
+  }}
+])`,
+    run: () =>
+      db
+        .collection("inventory")
+        .aggregate([
+          {
+            $lookup: {
+              from: "skus",
+              localField: "sku_id",
+              foreignField: "_id",
+              as: "sku",
+            },
+          },
+          { $unwind: "$sku" },
+          {
+            $group: {
+              _id: "$sku.product_id",
+              total_quantity: { $sum: "$quantity" },
+              total_reserved: { $sum: "$reserved_quantity" },
+            },
+          },
+          {
+            $lookup: {
+              from: "products",
+              localField: "_id",
+              foreignField: "_id",
+              as: "product",
+            },
+          },
+          { $unwind: "$product" },
+          {
+            $project: {
+              product_name: "$product.name",
+              total_quantity: 1,
+              total_reserved: 1,
+              available: {
+                $subtract: ["$total_quantity", "$total_reserved"],
+              },
+            },
+          },
+        ])
+        .toArray(),
+  },
+  {
+    id: "low-stock-demo",
+    domain: "Nicolas",
+    title: "Alertes de reapprovisionnement",
+    description: "SKUs dont le stock disponible est sous le seuil de commande",
+    mongoQuery: `db.inventory.find({
+  $expr: {
+    $lte: [
+      { $subtract: ["$quantity", "$reserved_quantity"] },
+      "$reorder_threshold"
+    ]
+  }
+})`,
+    run: () =>
+      db
+        .collection("inventory")
+        .find({
+          $expr: {
+            $lte: [
+              { $subtract: ["$quantity", "$reserved_quantity"] },
+              "$reorder_threshold",
+            ],
+          },
+        })
+        .toArray(),
+  },
+
 ];
 
 // -- Live reload (SSE + fs.watch) ----------------------------------------------
@@ -856,6 +1045,12 @@ function parseMongoQuery(raw) {
   // Must start with db.
   if (!raw.startsWith("db.")) {
     return { error: "La requete doit commencer par \"db.\"" };
+  }
+
+  // Handle db-level methods like db.listCollections()
+  const dbMethod = raw.match(/^db\.(listCollections)\(\s*\)/);
+  if (dbMethod) {
+    return { dbLevel: true, method: dbMethod[1], args: [], modifiers: [] };
   }
 
   // Match: db.<collection>.<method>(
@@ -986,8 +1181,13 @@ app.post("/api/custom-query", async (req, res) => {
 
   try {
     const start = process.hrtime.bigint();
-    const col = db.collection(parsed.collection);
-    let cursor = col[parsed.method](...parsed.args);
+    let cursor;
+    if (parsed.dbLevel) {
+      cursor = db[parsed.method](...parsed.args);
+    } else {
+      const col = db.collection(parsed.collection);
+      cursor = col[parsed.method](...parsed.args);
+    }
 
     // Apply chained modifiers (sort/limit/skip) for cursors
     if (cursor && typeof cursor.sort === "function") {

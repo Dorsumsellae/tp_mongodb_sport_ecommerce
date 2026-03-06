@@ -1,3 +1,63 @@
+function highlightJSON(json) {
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc(json).replace(
+    /("(?:\\.|[^"\\])*")\s*:/g,
+    '<span class="syn-key">$1</span>:'
+  ).replace(
+    /:\s*("(?:\\.|[^"\\])*")/g,
+    (m, str) => ': <span class="syn-str">' + str + '</span>'
+  ).replace(
+    /:\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+    ': <span class="syn-num">$1</span>'
+  ).replace(
+    /:\s*(true|false)/g,
+    ': <span class="syn-bool">$1</span>'
+  ).replace(
+    /:\s*(null)/g,
+    ': <span class="syn-null">$1</span>'
+  ).replace(
+    /([[\]{}])/g,
+    '<span class="syn-bracket">$1</span>'
+  );
+}
+
+function highlightMongo(query) {
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const tokens = [];
+  // Extract strings first to protect them from further replacements
+  let escaped = esc(query).replace(/("(?:\\.|[^"\\])*")/g, (m) => {
+    tokens.push('<span class="syn-str">' + m + '</span>');
+    return '\x00T' + (tokens.length - 1) + '\x00';
+  });
+  escaped = escaped
+    .replace(
+      /\b(db)\.(\w+)\.(find|findOne|aggregate|countDocuments|distinct|insertOne|insertMany|updateOne|updateMany|deleteOne|deleteMany|replaceOne|sort|limit|skip|project|match|group|unwind|lookup|addFields|set|count)\b/g,
+      '<span class="syn-null">$1</span>.<span class="syn-collection">$2</span>.<span class="syn-method">$3</span>'
+    )
+    .replace(
+      /\.(sort|limit|skip|project|match|group|unwind|lookup|addFields|set|count)\b/g,
+      '.<span class="syn-method">$1</span>'
+    )
+    .replace(
+      /(\$\w+)/g,
+      '<span class="syn-operator">$1</span>'
+    )
+    .replace(
+      /:\s*(-?\d+(?:\.\d+)?)/g,
+      ': <span class="syn-num">$1</span>'
+    )
+    .replace(
+      /:\s*(true|false)/g,
+      ': <span class="syn-bool">$1</span>'
+    )
+    .replace(
+      /:\s*(null)\b/g,
+      ': <span class="syn-null">$1</span>'
+    );
+  // Restore string tokens
+  return escaped.replace(/\x00T(\d+)\x00/g, (_, i) => tokens[i]);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const domainFilters = document.getElementById("domain-filters");
   const queryList = document.getElementById("query-list");
@@ -57,7 +117,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Show panel with loading state
     resultPanel.classList.remove("hidden");
     resultTitle.textContent = query.title;
-    resultQuery.textContent = query.mongoQuery;
+    resultQuery.innerHTML = highlightMongo(query.mongoQuery);
     resultDuration.innerHTML = '<span class="loading"></span> Execution...';
     resultCount.textContent = "";
     resultData.textContent = "";
@@ -74,7 +134,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       resultDuration.innerHTML = `Duree : <strong>${data.duration_ms} ms</strong>`;
       resultCount.innerHTML = `Documents : <strong>${data.count}</strong>`;
-      resultData.textContent = JSON.stringify(data.result, null, 2);
+      resultData.innerHTML = highlightJSON(JSON.stringify(data.result, null, 2));
     } catch (err) {
       resultDuration.textContent = "Erreur reseau";
       resultData.textContent = err.message;
@@ -137,7 +197,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     resultPanel.classList.remove("hidden");
     resultTitle.textContent = "Requete personnalisee";
-    resultQuery.textContent = raw;
+    resultQuery.innerHTML = highlightMongo(raw);
     resultDuration.innerHTML = '<span class="loading"></span> Execution...';
     resultCount.textContent = "";
     resultData.textContent = "";
@@ -158,7 +218,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       resultDuration.innerHTML = `Duree : <strong>${data.duration_ms} ms</strong>`;
       resultCount.innerHTML = `Documents : <strong>${data.count}</strong>`;
-      resultData.textContent = JSON.stringify(data.result, null, 2);
+      resultData.innerHTML = highlightJSON(JSON.stringify(data.result, null, 2));
     } catch (err) {
       resultDuration.textContent = "Erreur reseau";
       resultData.textContent = err.message;

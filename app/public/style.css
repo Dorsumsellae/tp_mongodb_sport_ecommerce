@@ -386,6 +386,27 @@ pre code {
   color: var(--text);
 }
 
+/* Syntax highlighting */
+.syn-key { color: #74b9ff; }
+.syn-str { color: #00b894; }
+.syn-num { color: #fdcb6e; }
+.syn-bool { color: #fd79a8; }
+.syn-null { color: #8b8fa3; font-style: italic; }
+.syn-bracket { color: #a29bfe; }
+.syn-method { color: #fd79a8; font-weight: 600; }
+.syn-collection { color: #74b9ff; }
+.syn-operator { color: #fdcb6e; }
+
+[data-theme="light"] .syn-key { color: #2563eb; }
+[data-theme="light"] .syn-str { color: #059669; }
+[data-theme="light"] .syn-num { color: #d97706; }
+[data-theme="light"] .syn-bool { color: #db2777; }
+[data-theme="light"] .syn-null { color: #6b7280; }
+[data-theme="light"] .syn-bracket { color: #6c5ce7; }
+[data-theme="light"] .syn-method { color: #db2777; }
+[data-theme="light"] .syn-collection { color: #2563eb; }
+[data-theme="light"] .syn-operator { color: #d97706; }
+
 /* Loading spinner */
 .loading {
   display: inline-block;

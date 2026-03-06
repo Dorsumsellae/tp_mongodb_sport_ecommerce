@@ -8,8 +8,11 @@
 </head>
 <body>
   <header>
-    <h1>MongoDB Query Explorer</h1>
-    <p class="subtitle">E-Commerce Vetements de Sport</p>
+    <div>
+      <h1>MongoDB Query Explorer</h1>
+      <p class="subtitle">E-Commerce Vetements de Sport</p>
+    </div>
+    <button id="theme-toggle" title="Changer de theme">&#9790;</button>
   </header>
 
   <main>
@@ -62,8 +65,35 @@
     </section>
   </main>
 
+  <script>
+    (() => {
+      const saved = localStorage.getItem("theme");
+      if (saved) document.documentElement.setAttribute("data-theme", saved);
+    })();
+  </script>
   <script src="app.js"></script>
   <script>
+    (() => {
+      const toggle = document.getElementById("theme-toggle");
+      const update = () => {
+        const isLight = document.documentElement.getAttribute("data-theme") === "light";
+        toggle.innerHTML = isLight ? "&#9728;" : "&#9790;";
+      };
+      update();
+      toggle.addEventListener("click", () => {
+        const isLight = document.documentElement.getAttribute("data-theme") === "light";
+        const next = isLight ? "dark" : "light";
+        if (next === "dark") {
+          document.documentElement.removeAttribute("data-theme");
+          localStorage.removeItem("theme");
+        } else {
+          document.documentElement.setAttribute("data-theme", next);
+          localStorage.setItem("theme", next);
+        }
+        update();
+      });
+    })();
+
     (() => {
       const es = new EventSource("/__livereload");
       es.onmessage = (e) => {

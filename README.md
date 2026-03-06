@@ -198,6 +198,35 @@ Les collections disponibles sont detectees dynamiquement depuis la base de donne
 
 Raccourcis : <kbd>Ctrl+Enter</kbd> pour executer, <kbd>Tab</kbd> pour indenter.
 
+### Historique des requetes
+
+Les requetes executees (predefinies ou personnalisees) sont sauvegardees automatiquement dans le **localStorage** du navigateur. L'historique est accessible dans la barre laterale et permet de re-charger une requete passee en un clic.
+
+- Jusqu'a 30 requetes conservees
+- Bouton de vidage de l'historique
+- Les doublons consecutifs sont ignores
+
+### Coloration syntaxique
+
+L'editeur et les resultats beneficient d'une coloration syntaxique dediee :
+
+- **Requetes MongoDB** : methodes, collections, operateurs `$`, chaines, nombres, booleens
+- **Resultats JSON** : cles, valeurs, types
+
+### Theme clair / sombre
+
+Le bouton en haut a droite permet de basculer entre theme sombre (par defaut) et theme clair. Le choix est persiste dans le localStorage.
+
+### Diagramme ER interactif
+
+Le bouton **Schema** dans le header ouvre un diagramme ER interactif (rendu via [Mermaid.js](https://mermaid.js.org/)) affichant l'ensemble des collections et leurs relations. Le diagramme supporte :
+
+- **Zoom** a la molette
+- **Deplacement** par cliquer-glisser (drag)
+- **Recentrage** via le bouton Reset
+
+Le fichier source du diagramme est `ecommerce_sports_schema.mermaid`. Il peut aussi etre visualise dans VS Code avec l'extension **Mermaid Editor** (Tomoyuki Asakura).
+
 ### Hot reload
 
 Les fichiers du frontend (`app/public/`) sont montes en volume dans le conteneur. Toute modification est detectee automatiquement :
@@ -208,9 +237,3 @@ Les fichiers du frontend (`app/public/`) sont montes en volume dans le conteneur
 Aucune action necessaire, le navigateur se met a jour automatiquement via Server-Sent Events.
 
 > **Voir [QUERIES.md](QUERIES.md)** pour une explication detaillee de chaque requete, avec les concepts MongoDB expliques pour les debutants.
-
----
-
-## Diagramme ER
-
-Le fichier `ecommerce_sports_schema.mermaid` contient le diagramme ER au format Mermaid. Pour le visualiser dans VS Code, installer l'extension **Mermaid Editor** (Tomoyuki Asakura) qui permet l'ouverture directe des fichiers `.mermaid` avec export PNG/SVG.

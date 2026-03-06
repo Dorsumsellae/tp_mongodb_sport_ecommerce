@@ -12,8 +12,24 @@
       <h1>MongoDB Query Explorer</h1>
       <p class="subtitle">E-Commerce Vetements de Sport</p>
     </div>
-    <button id="theme-toggle" title="Changer de theme">&#9790;</button>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button id="schema-toggle" title="Voir le schema">Schema</button>
+      <button id="theme-toggle" title="Changer de theme">&#9790;</button>
+    </div>
   </header>
+
+  <div id="schema-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Schema MongoDB — E-Commerce Sports</h2>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <button id="reset-schema-view" title="Recentrer" style="font-size:0.75rem;padding:0.3rem 0.7rem">Reset</button>
+          <button id="close-schema">&times;</button>
+        </div>
+      </div>
+      <div id="schema-diagram" class="modal-body"></div>
+    </div>
+  </div>
 
   <main>
     <nav id="sidebar">
@@ -72,10 +88,13 @@
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script>
     (() => {
       const saved = localStorage.getItem("theme");
       if (saved) document.documentElement.setAttribute("data-theme", saved);
+      const isLight = document.documentElement.getAttribute("data-theme") === "light";
+      mermaid.initialize({ startOnLoad: false, theme: isLight ? "default" : "dark" });
     })();
   </script>
   <script src="app.js"></script>
@@ -98,6 +117,229 @@
           localStorage.setItem("theme", next);
         }
         update();
+      });
+    })();
+
+    (() => {
+      const schemaModal = document.getElementById("schema-modal");
+      const schemaToggle = document.getElementById("schema-toggle");
+      const closeSchema = document.getElementById("close-schema");
+      const schemaDiagram = document.getElementById("schema-diagram");
+      let rendered = false;
+
+      const diagramDef = `erDiagram
+    CATEGORIES {
+        ObjectId id
+        string name
+        string slug
+        string path
+        ObjectId parent-id
+        array ancestors
+        string image-url
+        int sort-order
+        boolean is-active
+    }
+    SUPPLIERS {
+        ObjectId id
+        string company-name
+        string contact-name
+        string email
+        string phone
+        object address
+        array sport-specialties
+        string status
+    }
+    PRODUCTS {
+        ObjectId id
+        string name
+        string slug
+        string description
+        ObjectId supplier-id
+        array category-ids
+        array tags
+        string brand
+        string sport-type
+        string gender-target
+        array materials
+        array images
+        number avg-rating
+        int review-count
+        string status
+    }
+    SKUS {
+        ObjectId id
+        ObjectId product-id
+        string sku-code
+        string size
+        string color
+        string color-hex
+        number price
+        number compare-at-price
+        number weight-g
+        array images
+        boolean is-active
+    }
+    WAREHOUSES {
+        ObjectId id
+        string name
+        string code
+        object address
+        string type
+        boolean is-active
+    }
+    INVENTORY {
+        ObjectId id
+        ObjectId sku-id
+        ObjectId warehouse-id
+        int quantity
+        int reserved-quantity
+        string condition
+        int reorder-threshold
+        datetime last-restock-date
+    }
+    USERS {
+        ObjectId id
+        string email
+        string first-name
+        string last-name
+        string phone
+        array addresses
+        array preferred-sports
+        array preferred-sizes
+        string loyalty-tier
+        datetime created-at
+    }
+    CARTS {
+        ObjectId id
+        ObjectId user-id
+        array items
+        datetime expires-at
+        datetime updated-at
+    }
+    ORDERS {
+        ObjectId id
+        string order-number
+        ObjectId user-id
+        array items
+        object shipping-address
+        object billing-address
+        object payment
+        array applied-promotions
+        number subtotal
+        number shipping-cost
+        number discount-total
+        number total
+        string status
+        datetime created-at
+    }
+    REVIEWS {
+        ObjectId id
+        ObjectId product-id
+        ObjectId user-id
+        int rating
+        string title
+        string comment
+        array image-urls
+        object sport-context
+        boolean verified-purchase
+        datetime created-at
+    }
+    PROMOTIONS {
+        ObjectId id
+        string code
+        string name
+        string type
+        number value
+        number max-discount-amount
+        object conditions
+        datetime start-date
+        datetime end-date
+        int max-total-uses
+        int max-uses-per-user
+        string status
+        boolean stackable
+    }
+    SUPPLIERS ||--o{ PRODUCTS : fournit
+    CATEGORIES ||--o{ PRODUCTS : classifie
+    CATEGORIES ||--o| CATEGORIES : parent
+    PRODUCTS ||--o{ SKUS : decline
+    SKUS ||--o{ INVENTORY : stocke
+    WAREHOUSES ||--o{ INVENTORY : contient
+    USERS ||--o{ ORDERS : passe
+    USERS ||--o| CARTS : possede
+    USERS ||--o{ REVIEWS : redige
+    PRODUCTS ||--o{ REVIEWS : recoit
+    SKUS }o--o{ CARTS : ajout
+    SKUS }o--o{ ORDERS : commande
+    PROMOTIONS }o--o{ ORDERS : applique`;
+
+      let scale = 1;
+      let panX = 0, panY = 0;
+      let isPanning = false;
+      let startX, startY;
+
+      function applyTransform() {
+        const inner = schemaDiagram.querySelector("svg");
+        if (inner) inner.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+      }
+
+      async function renderSchema() {
+        if (rendered) return;
+        try {
+          const { svg } = await mermaid.render("schema-svg", diagramDef);
+          schemaDiagram.innerHTML = svg;
+          const svgEl = schemaDiagram.querySelector("svg");
+          svgEl.style.transformOrigin = "center center";
+          svgEl.style.transition = "none";
+          svgEl.style.maxWidth = "none";
+          rendered = true;
+        } catch (e) {
+          schemaDiagram.innerHTML = "<p style='color:red'>Erreur de rendu : " + e.message + "</p>";
+        }
+      }
+
+      function resetView() {
+        scale = 1; panX = 0; panY = 0;
+        applyTransform();
+      }
+
+      schemaDiagram.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        scale = Math.min(3, Math.max(0.2, scale + delta));
+        applyTransform();
+      }, { passive: false });
+
+      schemaDiagram.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        isPanning = true;
+        startX = e.clientX - panX;
+        startY = e.clientY - panY;
+        schemaDiagram.style.cursor = "grabbing";
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!isPanning) return;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        applyTransform();
+      });
+
+      window.addEventListener("mouseup", () => {
+        isPanning = false;
+        schemaDiagram.style.cursor = "grab";
+      });
+
+      const resetBtn = document.getElementById("reset-schema-view");
+      resetBtn.addEventListener("click", resetView);
+
+      schemaToggle.addEventListener("click", () => {
+        schemaModal.classList.remove("hidden");
+        renderSchema();
+      });
+      closeSchema.addEventListener("click", () => schemaModal.classList.add("hidden"));
+      schemaModal.addEventListener("click", (e) => {
+        if (e.target === schemaModal) schemaModal.classList.add("hidden");
       });
     })();
 

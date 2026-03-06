@@ -835,7 +835,7 @@ const queries = [
         customer: {
           first_name: "Louis",
           last_name: "Vanacker",
-          email: user.email || "louis.vanacker@example.com",
+          email: "vanackerlouis13@gmail.com",
         },
         items: [{
           product_id: "69aa91177afdb8d18c8563b9",
@@ -872,62 +872,12 @@ const queries = [
     id: "louis-step4-order-details",
     domain: "Scenario Louis",
     title: "Etape 4 - Details de la commande",
-    description: "Afficher les details complets de la commande avec les infos de l'utilisateur",
-    mongoQuery: `db.orders.aggregate([
-  { $match: { order_number: "ORD-LOUIS-001" } },
-  { $lookup: {
-      from: "users",
-      localField: "user_id",
-      foreignField: "_id",
-      as: "user"
-  }},
-  { $unwind: "$user" },
-  { $project: {
-      order_number: 1,
-      status: 1,
-      items: 1,
-      subtotal: 1,
-      shipping_cost: 1,
-      discount_total: 1,
-      total: 1,
-      shipping_address: 1,
-      created_at: 1,
-      "user.first_name": 1,
-      "user.last_name": 1,
-      "user.email": 1
-  }}
-])`,
+    description: "Afficher les details complets de la commande de Louis Vanacker",
+    mongoQuery: `db.orders.findOne({ order_number: "ORD-LOUIS-001" })`,
     run: async () => {
-      const result = await db.collection("orders").aggregate([
-        { $match: { order_number: "ORD-LOUIS-001" } },
-        {
-          $lookup: {
-            from: "users",
-            localField: "user_id",
-            foreignField: "_id",
-            as: "user",
-          },
-        },
-        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-        {
-          $project: {
-            order_number: 1,
-            status: 1,
-            items: 1,
-            subtotal: 1,
-            shipping_cost: 1,
-            discount_total: 1,
-            total: 1,
-            shipping_address: 1,
-            created_at: 1,
-            "user.first_name": 1,
-            "user.last_name": 1,
-            "user.email": 1,
-          },
-        },
-      ]).toArray();
-      if (result.length === 0) return [{ message: "Commande ORD-LOUIS-001 introuvable. Lancez d'abord les etapes 1, 2 et 3." }];
-      return result;
+      const result = await db.collection("orders").findOne({ order_number: "ORD-LOUIS-001" });
+      if (!result) return [{ message: "Commande ORD-LOUIS-001 introuvable. Lancez d'abord les etapes 1, 2 et 3." }];
+      return [result];
     },
   },
 ];

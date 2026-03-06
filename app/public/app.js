@@ -69,6 +69,54 @@ document.addEventListener("DOMContentLoaded", async () => {
   const resultData = document.querySelector("#result-data code");
   const closeResult = document.getElementById("close-result");
 
+  const historyList = document.getElementById("history-list");
+  const clearHistoryBtn = document.getElementById("clear-history");
+  const MAX_HISTORY = 30;
+
+  function getHistory() {
+    try { return JSON.parse(localStorage.getItem("queryHistory") || "[]"); }
+    catch { return []; }
+  }
+
+  function saveToHistory(queryText) {
+    const history = getHistory();
+    // Avoid consecutive duplicates
+    if (history.length > 0 && history[0].query === queryText) return;
+    history.unshift({ query: queryText, time: Date.now() });
+    if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+    localStorage.setItem("queryHistory", JSON.stringify(history));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const history = getHistory();
+    historyList.innerHTML = "";
+    if (history.length === 0) {
+      historyList.innerHTML = '<div style="font-size:0.7rem;color:var(--text-muted);padding:0.4rem 0.6rem;opacity:0.5">Aucune requete</div>';
+      return;
+    }
+    for (const entry of history) {
+      const btn = document.createElement("button");
+      btn.className = "history-item";
+      const date = new Date(entry.time);
+      const timeStr = date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      const dateStr = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+      btn.innerHTML = `<span class="history-time">${dateStr} ${timeStr}</span>${entry.query.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`;
+      btn.title = entry.query;
+      btn.addEventListener("click", () => {
+        customQueryEl.value = entry.query;
+        autoResize();
+        customQueryEl.focus();
+      });
+      historyList.appendChild(btn);
+    }
+  }
+
+  clearHistoryBtn.addEventListener("click", () => {
+    localStorage.removeItem("queryHistory");
+    renderHistory();
+  });
+
   let queries = [];
   let activeDomain = null;
 
@@ -121,6 +169,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     resultDuration.innerHTML = '<span class="loading"></span> Execution...';
     resultCount.textContent = "";
     resultData.textContent = "";
+    saveToHistory(query.mongoQuery);
 
     try {
       const res = await fetch(`/api/queries/${query.id}/run`);
@@ -201,6 +250,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     resultDuration.innerHTML = '<span class="loading"></span> Execution...';
     resultCount.textContent = "";
     resultData.textContent = "";
+    saveToHistory(raw);
 
     try {
       const res = await fetch("/api/custom-query", {
@@ -276,4 +326,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initial render
   renderQueries();
+  renderHistory();
 });

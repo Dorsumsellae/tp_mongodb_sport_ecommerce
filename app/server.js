@@ -832,6 +832,11 @@ const queries = [
       const result = await db.collection("orders").insertOne({
         order_number: "ORD-LOUIS-001",
         user_id: user._id,
+        customer: {
+          first_name: "Louis",
+          last_name: "Vanacker",
+          email: user.email || "louis.vanacker@example.com",
+        },
         items: [{
           product_id: "69aa91177afdb8d18c8563b9",
           product_name: "Nike Air Zoom Pegasus 41",
@@ -841,13 +846,20 @@ const queries = [
           price: 129.99,
           quantity: 1,
         }],
-        shipping_address: user.addresses ? user.addresses[0] : {},
+        shipping_address: {
+          label: "Domicile",
+          street: "34-36 Av. de Cournon",
+          city: "Aubiere",
+          zip: "63170",
+          country: "FR",
+          is_default: true,
+        },
         subtotal: 129.99,
         shipping_cost: 4.99,
         discount_total: 0,
         total: 134.98,
         status: "confirmed",
-        created_at: new Date(),
+        created_at: new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Paris" })),
       });
       return [{
         acknowledged: result.acknowledged,

@@ -439,7 +439,7 @@ const queries = [
     {
       sku_id: ObjectId("<sku_id>"),
       product_name: "Nike Air Zoom Pegasus 41",
-      size: "45", color: "Blanc",
+      size: "42", color: "Blanc",
       price: 129.99, quantity: 1
     },
     {
@@ -461,7 +461,7 @@ const queries = [
       const result = await db.collection("carts").insertOne({
         user_id: user._id,
         items: [
-          { sku_id: skuShoe._id, product_name: "Nike Air Zoom Pegasus 41", size: "45", color: "Blanc", price: 129.99, quantity: 1 },
+          { sku_id: skuShoe._id, product_name: "Nike Air Zoom Pegasus 41", size: "42", color: "Blanc", price: 129.99, quantity: 1 },
           { sku_id: skuTee._id, product_name: "Nike Dri-FIT Running Tee", size: "M", color: "Bleu", price: 34.99, quantity: 2 },
         ],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -482,7 +482,7 @@ const queries = [
       items: {
         sku_id: ObjectId("<sku_id>"),
         product_name: "Adidas Ultraboost Light",
-        size: "45", color: "Gris",
+        size: "42", color: "Gris",
         price: 179.99, quantity: 1
       }
     },
@@ -496,7 +496,7 @@ const queries = [
         { user_id: user._id },
         {
           $push: {
-            items: { sku_id: sku._id, product_name: "Adidas Ultraboost Light", size: "45", color: "Gris", price: 179.99, quantity: 1 },
+            items: { sku_id: sku._id, product_name: "Adidas Ultraboost Light", size: "42", color: "Gris", price: 179.99, quantity: 1 },
           },
           $set: { updated_at: new Date() },
         }
@@ -759,7 +759,7 @@ const queries = [
       return db.collection("inventory").aggregate([
         { $lookup: { from: "skus", localField: "sku_id", foreignField: "_id", as: "sku" } },
         { $unwind: "$sku" },
-        { $match: { "sku.product_id": product._id, "sku.size": "42" } },
+        { $match: { "sku.product_id": product._id, "sku.size": "45" } },
         {
           $project: {
             "sku.sku_code": 1, "sku.size": 1, "sku.color": 1,
@@ -777,7 +777,7 @@ const queries = [
     description: "Louis achete 1 paire taille 45 : on incremente reserved_quantity de +1 si stock disponible",
     mongoQuery: `db.inventory.updateOne(
   {
-    sku_id: <sku_id_taille_45>,
+    sku_id: <sku_id_taille_42>,
     $expr: { $gt: [{ $subtract: ["$quantity", "$reserved_quantity"] }, 0] }
   },
   {
@@ -790,7 +790,7 @@ const queries = [
         product_id: "69aa91177afdb8d18c8563b9",
         size: "45",
       });
-      if (!sku) return [{ message: "SKU taille 42 introuvable." }];
+      if (!sku) return [{ message: "SKU taille 45 introuvable." }];
       const result = await db.collection("inventory").updateOne(
         {
           sku_id: sku._id,
@@ -818,8 +818,8 @@ const queries = [
   items: [{
     product_id: "69aa91177afdb8d18c8563b9",
     product_name: "Nike Air Zoom Pegasus 41",
-    sku_code: "NK-PEG41-WHT-45",
-    size: "45", color: "Blanc",
+    sku_code: "NK-PEG41-WHT-42",
+    size: "42", color: "Blanc",
     price: 129.99, quantity: 1
   }],
   subtotal: 129.99,
@@ -843,7 +843,7 @@ const queries = [
         items: [{
           product_id: "69aa91177afdb8d18c8563b9",
           product_name: "Nike Air Zoom Pegasus 41",
-          sku_code: sku ? sku.sku_code : "NK-PEG41-WHT-45",
+          sku_code: sku ? sku.sku_code : "NK-PEG41-WHT-42",
           size: "45",
           color: "Blanc",
           price: 129.99,

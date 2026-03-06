@@ -148,16 +148,16 @@ Les index essentiels pour les requetes les plus frequentes sont les suivants.
 
 ## Donnees de demonstration
 
-Le script d'initialisation insere un jeu de donnees coherent :
+Le script d'initialisation insere un jeu de donnees realiste :
 
 - **6 categories** -- arbre : Sport -> Running -> Chaussures / Hauts, Football, Yoga
 - **2 fournisseurs** -- Nike Europe Distribution, Adidas France
-- **3 produits** avec **6 SKUs** -- Pegasus 41, Ultraboost Light, Dri-FIT Tee
-- **2 entrepots** et **7 lignes d'inventaire**
-- **2 utilisateurs** -- Alice (gold) et Bob (silver)
-- **1 panier actif** et **1 commande livree**
-- **3 avis** avec contexte sportif
-- **3 promotions** -- pourcentage, bienvenue, livraison gratuite
+- **8 produits** avec **19 SKUs** -- chaussures, vetements et accessoires couvrant running, football et yoga
+- **3 entrepots** (Paris, Lyon, Marseille) et **29 lignes d'inventaire** (dont retours et articles endommages)
+- **5 utilisateurs** -- Alice (gold), Bob (silver), Clara (gold), David (bronze), Emma (silver)
+- **3 paniers actifs** et **7 commandes** (delivered, shipped, confirmed, processing)
+- **14 avis** avec contexte sportif couvrant tous les sports
+- **6 promotions** -- pourcentage, montant fixe, livraison gratuite, expiree
 
 ---
 

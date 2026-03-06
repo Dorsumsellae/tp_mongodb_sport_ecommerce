@@ -95,6 +95,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const runCustomBtn = document.getElementById("run-custom");
   const collectionHint = document.getElementById("collection-hint");
 
+  // Auto-resize textarea to fit content
+  function autoResize() {
+    customQueryEl.style.height = "auto";
+    customQueryEl.style.height = Math.max(120, customQueryEl.scrollHeight) + "px";
+  }
+  customQueryEl.addEventListener("input", autoResize);
+
   // Populate collection dropdown dynamically
   const colRes = await fetch("/api/collections");
   const collections = await colRes.json();
@@ -118,6 +125,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
     }
     customQueryEl.focus();
+    autoResize();
     collectionHint.value = "";
   });
 
@@ -182,6 +190,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const origRunQuery = runQuery;
   async function runQueryAndFill(query, card) {
     customQueryEl.value = query.mongoQuery;
+    autoResize();
     await origRunQuery(query, card);
   }
 

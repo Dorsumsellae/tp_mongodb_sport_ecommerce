@@ -66,6 +66,34 @@ db.products.find({})
   .skip(20)              // Sauter les 20 premiers (pour la pagination)
 ```
 
+### `ObjectId` -- Les identifiants MongoDB
+
+En MongoDB, les identifiants (`_id`) et les champs de reference (`user_id`, `product_id`, `sku_id`...) sont stockes en type **ObjectId**, un type binaire special de 12 octets. Ce n'est **pas** une chaine de caracteres.
+
+MongoDB applique un **typage strict** : une string et un ObjectId ayant la meme valeur hexadecimale ne sont **pas** egaux.
+
+```javascript
+// NE FONCTIONNE PAS — le user_id en base est un ObjectId, pas une string
+db.orders.find({ user_id: "69a9d45103714209698563cb" })
+// Resultat : 0 document (aucun match)
+
+// FONCTIONNE — on utilise le bon type
+db.orders.find({ user_id: ObjectId("69a9d45103714209698563cb") })
+// Resultat : les commandes de cet utilisateur
+```
+
+**Pourquoi ?** C'est comme comparer le nombre `42` et la chaine `"42"` : pour MongoDB, ce sont deux valeurs differentes. Meme si l'affichage semble identique, le type compte.
+
+**Comment savoir quand utiliser ObjectId ?** Quand vous faites un `db.collection.find()` dans mongosh et que le resultat affiche `ObjectId("...")` pour un champ, vous devez reutiliser `ObjectId("...")` dans vos filtres pour ce champ. Les champs texte comme `email`, `order_number` ou `slug` restent des strings classiques.
+
+```javascript
+// Champ ObjectId → utiliser ObjectId()
+db.orders.find({ user_id: ObjectId("69a9d45103714209698563cb") })
+
+// Champ string → utiliser une string classique
+db.orders.find({ order_number: "ORD-2026-000001" })
+```
+
 ### Operateurs d'ecriture
 
 | Operateur | Role | Exemple |
